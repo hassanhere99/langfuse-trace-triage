@@ -8,7 +8,30 @@ The skill is read-only. It never writes to or deletes anything in Langfuse, and 
 
 ## Example
 
-Example traces, reports and promptfoo tests will be added after the demo agent is run against a Langfuse project. Until then, the report format is described in [skills/langfuse-trace-triage/reference/output-format.md](skills/langfuse-trace-triage/reference/output-format.md).
+`examples/` holds a real run. The demo agent in `demo-agent/` produced the traces with `llama3.2:3b` on a local Ollama server (CPU only). The reports in `examples/reports/` and the promptfoo tests in `examples/promptfoo/` were written by the skill, run once per trace with `claude -p` on `claude-sonnet-5-5`. They were not edited by hand.
+
+| scenario | what the agent did | skill findings (confidence) | trace | report |
+|---|---|---|---|---|
+| search_by_title | called `search_books` and answered from the result | none | [json](examples/traces/search_by_title.json) | [report](examples/reports/568e32113f4afef938854f6caee45376.md) |
+| shipping_policy | called `get_store_policy` and answered from the result | none | [json](examples/traces/shipping_policy.json) | [report](examples/reports/361515fd899d5188fe2010adc2d56d40.md) |
+| undo_delivered_order | "undo my order BK-10234": called `start_return` directly, without `get_order_status` | `description_overlap` (high), `wrong_tool` (medium), `wrong_arguments` (high, low severity), `missing_tool_call` (medium) | [json](examples/traces/undo_delivered_order.json) | [report](examples/reports/52a42ef6a07b1118928148c537b9a39d.md) |
+| cancel_bare_number | "cancel order 10571": called `cancel_order` with `"10571"`, got `Invalid order_id: "10571"`, told the user it could not find the order | `wrong_arguments` (medium), `tool_error_mishandled` (medium) | [json](examples/traces/cancel_bare_number.json) | [report](examples/reports/4e30ecd2dd0cd2465c2fafac242f5a8c.md) |
+| return_window_from_memory | called `get_store_policy` and answered from the result | none | [json](examples/traces/return_window_from_memory.json) | [report](examples/reports/ae32154e0914ea89e0cf8e77b1e72564.md) |
+| cancel_shipped_order | called `cancel_order` on a shipped order, which errored | `tool_error_mishandled` (medium) | [json](examples/traces/cancel_shipped_order.json) | [report](examples/reports/dfd0865869ace75001ee6ce844dcb4d4.md) |
+| return_processing_order | called `start_return` on a processing order, which errored | `tool_error_mishandled` (medium), `description_overlap` (medium) | [json](examples/traces/return_processing_order.json) | [report](examples/reports/2f3a8af0320782aaf84fbe2d7e5205c2.md) |
+| unneeded_lookup | called `search_books` for a question that needs no tool | `unnecessary_tool_call` (medium) | [json](examples/traces/unneeded_lookup.json) | [report](examples/reports/d16c62931b297a2bcd47834deb76a519.md) |
+
+Two scenarios did not go as designed. `return_window_from_memory` was meant to show a model answering from memory, but the model called `get_store_policy`, so there is no failure. `undo_delivered_order` was meant to show the model cancelling a delivered order; it called `start_return` instead, which succeeded.
+
+An excerpt from the report for `undo_delivered_order`, finding 1:
+
+> `cancel_order`: "Undo an order. Use this when the customer wants to reverse or back out of an order they placed."
+>
+> `start_return`: "Reverse an order. Use this when the customer wants to undo a purchase and get their money back."
+
+The full report continues with the other findings, a suggested diff for the tool descriptions and a promptfoo test case. The report format is described in [skills/langfuse-trace-triage/reference/output-format.md](skills/langfuse-trace-triage/reference/output-format.md).
+
+These traces and reports belong to `llama3.2:3b`. If you change the model, regenerate the example traces and reports with the new model (see Regenerating the examples). Do not relabel the old ones.
 
 ## Install
 
