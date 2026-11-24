@@ -236,12 +236,12 @@ Overall: before 15 passed, 15 failed; after 18 passed, 12 failed; 0 errors in bo
 
 Only the failing test for `cancel_bare_number` now passes. The `BK-` instruction in the `order_id` description made the model add the prefix every time. The other four still fail:
 
-- `undo_delivered_order`: the model still calls a state-changing tool without `get_order_status`. It now calls `cancel_order` instead of `start_return`.
+- `undo_delivered_order`: the model still calls a state-changing tool without `get_order_status` first (`start_return` in the before run, `cancel_order` in the after run). This choice also varied between earlier runs with the original `tools.json`.
 - `cancel_shipped_order`: after the error the model still offers a return shipping label.
 - `return_processing_order`: the model still says returns are possible for "shipped or delivered" orders and does not offer `cancel_order`.
 - `unneeded_lookup`: the model still calls `search_books` for a question about a book's age suitability.
 
-The 5 passing control tests still pass. The three repeats were identical at temperature 0, so they add little. No assertions were changed. With this small model, descriptions alone fixed 1 of 5 failures. The other four probably need server error messages, a system prompt change or a stronger model.
+The 5 passing control tests still pass. The three repeats were identical at temperature 0, so they add little. No assertions were changed. With this small model, descriptions alone fixed 1 of 5 failures. The reports' server-side fixes (error messages, rejecting the wrong order status) could not be applied in `tools.json`. Whether they or a different model would fix the other four was not tested.
 
 ## Running the tests
 
@@ -257,9 +257,8 @@ The tests cover `summarize_trace.py` and `fetch_trace.py` using fixtures in `tes
 
 ## Limitations
 
-- Classification is done by the model from one trace, so it can be wrong. Reports state a confidence level for each finding.
+- It works on one trace at a time, and classification is done by the model from that trace, so it can be wrong. Reports state a confidence level for each finding.
 - It needs the tool definitions. It recovers them from the generation input in the trace; if they are not there, you have to supply them.
-- It handles one trace at a time.
 - The promptfoo tests replay a single model step, not the whole agent, and model output varies between runs. Run a test before and after the fix. In the fix loop above, description changes alone fixed 1 of 5 failing tests with the small example model.
 - `fetch_trace.py` rebuilds the trace from observations, so trace-level fields come from the root observation.
 - `summarize_trace.py` pairs requested tool calls with tool observations by name and arguments, so identical repeated calls can be paired wrongly.
