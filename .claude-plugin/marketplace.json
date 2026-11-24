@@ -1,0 +1,16 @@
+{
+  "name": "langfuse-trace-triage",
+  "owner": {
+    "name": "Muhammad Hassan"
+  },
+  "metadata": {
+    "description": "Claude Code skill for triaging Langfuse traces from LLM agents"
+  },
+  "plugins": [
+    {
+      "name": "langfuse-trace-triage",
+      "source": "./",
+      "description": "Finds why an LLM agent response went wrong from a Langfuse trace and writes a promptfoo test case"
+    }
+  ]
+}

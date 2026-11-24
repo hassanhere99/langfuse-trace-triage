@@ -1,0 +1,11 @@
+{
+  "name": "langfuse-trace-triage",
+  "description": "Reads Langfuse traces from an LLM agent and finds why a response went wrong: wrong tool called, wrong arguments, or a tool description that needs changing. Outputs the evidence, a suggested fix and a promptfoo test case.",
+  "author": {
+    "name": "Muhammad Hassan"
+  },
+  "homepage": "https://github.com/hassanhere99/langfuse-trace-triage",
+  "repository": "https://github.com/hassanhere99/langfuse-trace-triage",
+  "license": "MIT",
+  "keywords": ["langfuse", "llm", "agents", "tracing", "promptfoo", "evals"]
+}
