@@ -130,7 +130,17 @@ ollama serve
 ollama pull llama3.2:3b
 ```
 
-Install Ollama from [ollama.com](https://ollama.com). The `.env.example` block for Ollama is `OPENAI_BASE_URL=http://localhost:11434/v1`, `OPENAI_API_KEY=ollama` and `DEMO_MODEL=llama3.2:3b`. `.env.example` also has DeepSeek and OpenAI blocks. They are documented but untested.
+Ollama 0.40.17 was used, installed with `brew install --cask ollama-app`. On Intel Macs Homebrew has no prebuilt `ollama` formula, so the cask avoids a source build. On a 2019 Intel MacBook Pro, `ollama ps` showed 100% CPU. The `.env.example` block for Ollama is `OPENAI_BASE_URL=http://localhost:11434/v1`, `OPENAI_API_KEY=ollama` and `DEMO_MODEL=llama3.2:3b`. `.env.example` also has DeepSeek and OpenAI blocks. They are documented but untested.
+
+To use DeepSeek instead (untested), set these in `.env`:
+
+```
+OPENAI_BASE_URL=https://api.deepseek.com
+OPENAI_API_KEY=<your DeepSeek key>
+DEMO_MODEL=<model id from DeepSeek's current model list>
+```
+
+OpenAI works the same way with `OPENAI_BASE_URL=https://api.openai.com/v1` (untested).
 
 Langfuse settings are read only from `.env`. `LANGFUSE_*` variables exported in your shell are ignored, so keys for another project cannot leak into the demo. Check which project the keys belong to, and that the model endpoint works:
 
@@ -180,7 +190,7 @@ The agent that produced this trace ran against an OpenAI-compatible endpoint con
 
 `--strict-mcp-config` with an empty MCP config keeps other MCP servers out of the run. Each run took about 40 seconds to 2 minutes and 15 to 19 turns. The skill writes `examples/reports/<trace_id>.md`, `examples/promptfoo/<trace_id>.yaml`, and adds the test to `examples/promptfoo/promptfooconfig.yaml`.
 
-The reports are written for the trace ids in `last_run.json`, so delete the old reports and tests first, or they will sit next to the new ones.
+The reports are written for the trace ids in `last_run.json`, so delete the old reports and tests first, or they will sit next to the new ones. Also remove the old entries from the `tests:` list in `examples/promptfoo/promptfooconfig.yaml`, or delete that file so the first skill run recreates it. If the tools changed, regenerate `examples/promptfoo/tools.json` with `python3 demo-agent/tools.py --dump-tools > examples/promptfoo/tools.json`.
 
 ### promptfoo tests
 
@@ -215,7 +225,7 @@ The tests cover `summarize_trace.py` and `fetch_trace.py` using fixtures in `tes
 - The skill has been run on eight traces from one demo agent and one model. The parser is also tested on hand-made fixtures in Anthropic and OpenAI-style (`tool_calls`) formats. The demo agent uses the OpenAI chat completions format.
 - It handles one trace at a time.
 - The promptfoo tests replay a single model step, not the whole agent, and model output varies between runs. Run a test before and after the fix.
-- The example model is small: a 3B model on CPU. What it does varies by model and by run, even at temperature 0. The scenarios in `demo-agent/` did not all behave as designed.
+- The example model is small: a 3B model on CPU. What it does varies by model and by run, even at temperature 0. The scenarios in `demo-agent/` did not all behave as designed. A second run of `run_demo.py` with the same model at temperature 0 called `cancel_order` in `undo_delivered_order`, where the recorded run called `start_return`. The live promptfoo replay of that trace also called `cancel_order`.
 - Ollama's default context is 4096 tokens. A long conversation or many tools can be cut off.
 - In the example traces, `llm-call-2` reports fewer input tokens (136 to 201) than `llm-call-1` (about 520), although its prompt is longer. This is probably Ollama counting only tokens outside its prompt cache. It was not verified.
 - If a thinking model returns a `reasoning` field, promptfoo drops the tool calls from the output (see [output-format.md](skills/langfuse-trace-triage/reference/output-format.md)).
