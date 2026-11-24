@@ -88,16 +88,10 @@ def main():
     ap.add_argument("--delay", type=float, default=5.0, help="seconds between attempts")
     args = ap.parse_args()
 
-    try:
-        from dotenv import load_dotenv
-        load_dotenv(ROOT / ".env", override=True)
-    except ImportError:
-        pass
-
-    missing = [k for k in ("LANGFUSE_PUBLIC_KEY", "LANGFUSE_SECRET_KEY") if not os.environ.get(k)]
-    if missing:
-        sys.exit("Missing required environment variables: " + ", ".join(missing))
-    host = os.environ.get("LANGFUSE_HOST") or os.environ.get("LANGFUSE_BASE_URL") or "https://cloud.langfuse.com"
+    sys.path.insert(0, str(HERE))
+    from repo_env import langfuse_host, load_repo_env
+    load_repo_env()  # Langfuse keys come only from the repo-root .env, never from the shell
+    host = langfuse_host()
     pk, sk = os.environ["LANGFUSE_PUBLIC_KEY"], os.environ["LANGFUSE_SECRET_KEY"]
 
     names = {}  # trace_id -> scenario_id
