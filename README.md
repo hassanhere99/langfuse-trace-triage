@@ -43,6 +43,10 @@ An excerpt from the report for `undo_delivered_order`, finding 1:
 
 The full report continues with the other findings, a suggested diff for the tool descriptions and a promptfoo test case. The report format is described in [skills/langfuse-trace-triage/reference/output-format.md](skills/langfuse-trace-triage/reference/output-format.md).
 
+The reports were written before the promptfoo run, so the five that have a failing test say it was not run or not checked. The results are in the promptfoo section below.
+
+The reports predate the rule that the skill uses only the trace being triaged. The `cancel_bare_number` report used other trace files in `examples/traces/` as evidence for the `BK-` order ID format.
+
 These traces and reports belong to `llama3.2:3b`. If you change the model, regenerate the example traces and reports with the new model (see Regenerating the examples). Do not relabel the old ones.
 
 ## Install
