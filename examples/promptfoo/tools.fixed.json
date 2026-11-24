@@ -1,0 +1,106 @@
+[
+  {
+    "type": "function",
+    "function": {
+      "name": "search_books",
+      "description": "Search the bookstore catalog by title, author or ISBN. Returns up to five matching books with ISBN, title, author, price in USD and the number of copies in stock. Use it when the customer wants to find a book, or check its price or availability. Do not use it for questions about a book's content, age suitability or quality: the catalog has no reviews or age ratings.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "description": "A title, author name or ISBN to search for."
+          }
+        },
+        "required": [
+          "query"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "get_order_status",
+      "description": "Look up an order and return its status, items and key dates.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "order_id": {
+            "type": "string",
+            "description": "The order ID, in the form BK-<number>, for example BK-10234. If the customer gives only the number, add the BK- prefix."
+          }
+        },
+        "required": [
+          "order_id"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "cancel_order",
+      "description": "Cancel an order that has not shipped yet (status \"processing\" or \"paid\") and refund it. Use this when the customer no longer wants an order that is still processing, even if they call it a return. Does not work once the order has shipped or been delivered. If you do not know the order's status, call get_order_status first. Orders that have shipped cannot be cancelled; if this returns an error for that reason, tell the customer so, and say that a return can be started once the order is delivered. Do not offer a return or return label for a shipped order.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "order_id": {
+            "type": "string",
+            "description": "The order ID, in the form BK-<number>, for example BK-10234. If the customer gives only the number, add the BK- prefix."
+          }
+        },
+        "required": [
+          "order_id"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "start_return",
+      "description": "Start a return and refund for an order that has been delivered. Does not work for orders that are still processing or shipped; use cancel_order for orders that have not shipped. If you do not know the order's status, call get_order_status first.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "order_id": {
+            "type": "string",
+            "description": "The order ID, in the form BK-<number>, for example BK-10234. If the customer gives only the number, add the BK- prefix."
+          },
+          "reason": {
+            "type": "string",
+            "description": "Why the customer wants to return the order, in the customer's words. Omit this field if the customer has not said."
+          }
+        },
+        "required": [
+          "order_id"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "get_store_policy",
+      "description": "Return the official store policy text for one topic: returns, shipping or cancellations. Use it for questions about how the store's rules work rather than about a specific order.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "topic": {
+            "type": "string",
+            "enum": [
+              "returns",
+              "shipping",
+              "cancellations"
+            ],
+            "description": "The policy topic to look up."
+          }
+        },
+        "required": [
+          "topic"
+        ]
+      }
+    }
+  }
+]
