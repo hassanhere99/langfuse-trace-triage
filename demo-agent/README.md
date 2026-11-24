@@ -89,3 +89,15 @@ Each trace is fetched with `skills/langfuse-trace-triage/scripts/fetch_trace.py`
 One trace per user message, named `bookstore-support`, with `scenario_id` in the metadata. Trace input is the user message and trace output is the final answer. Inside: a root span `agent-run`, a generation `llm-call-<n>` per model call, and a TOOL observation `tool:<name>` per tool call. The generation input is `{"messages", "tools"}` exactly as sent to the endpoint, in OpenAI chat completions format, with the system prompt as the first message. The output is the assistant message (`content` and `tool_calls`). A tool error sets level `ERROR` on that observation. It is returned to the model as a `role: tool` message whose content is `{"error": "..."}`; chat completions has no separate error flag.
 
 Reasoning text, if the server returns any (Ollama does for thinking models), is not recorded and not sent back to the model.
+
+## Notes and limitations
+
+- Setup used for the example: Ollama 0.40.17 on a 2019 Intel MacBook Pro, installed with `brew install --cask ollama-app`. On Intel Macs Homebrew has no prebuilt `ollama` formula, so the cask avoids a source build. `ollama ps` showed 100% CPU, so the GPU was not used. A run with the GPU was not done.
+- Ollama's default context is 4096 tokens. A long conversation or many tools can be cut off.
+- If a script fails with a certificate error on a python.org build of Python, set `SSL_CERT_FILE` to your CA bundle, for example `SSL_CERT_FILE=/etc/ssl/cert.pem` on macOS.
+- The example model is small: `llama3.2:3b` on CPU. What it does varies by model and by run, even at temperature 0. The scenarios did not all behave as designed. A second run of `run_demo.py` with the same model at temperature 0 called `cancel_order` in `undo_delivered_order`, where the recorded run called `start_return`. The live promptfoo replay of that trace also called `cancel_order`.
+- In the example traces, `llm-call-2` reports fewer input tokens (136 to 201) than `llm-call-1` (about 520), although its prompt is longer. This is probably Ollama counting only tokens outside its prompt cache. It was not verified.
+- `llm-rubric` assertions in the promptfoo tests are graded by the same 3B model and are unreliable. For `cancel_shipped_order` the grader's reason read as if the reply met the rubric while the assertion failed. Trust the `javascript` assertions.
+- If a thinking model returns a `reasoning` field, promptfoo drops the tool calls from the output (see [output-format.md](../skills/langfuse-trace-triage/reference/output-format.md)).
+- The DeepSeek and OpenAI settings in `.env.example` are untested. For OpenAI, `OPENAI_BASE_URL=https://api.openai.com/v1` would be used the same way as the DeepSeek one above. No run with either has been done.
+- The skill has been run on eight traces from one demo agent and one model. The parser is also tested on hand-made fixtures in Anthropic and OpenAI-style (`tool_calls`) formats. The demo agent uses the OpenAI chat completions format.

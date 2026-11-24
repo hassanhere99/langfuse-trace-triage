@@ -142,17 +142,7 @@ ollama serve
 ollama pull llama3.2:3b
 ```
 
-Ollama 0.40.17 was used, installed with `brew install --cask ollama-app`. On Intel Macs Homebrew has no prebuilt `ollama` formula, so the cask avoids a source build. On a 2019 Intel MacBook Pro, `ollama ps` showed 100% CPU. The `.env.example` block for Ollama is `OPENAI_BASE_URL=http://localhost:11434/v1`, `OPENAI_API_KEY=ollama` and `DEMO_MODEL=llama3.2:3b`. `.env.example` also has DeepSeek and OpenAI blocks. They are documented but untested.
-
-To use DeepSeek instead (untested), set these in `.env`:
-
-```
-OPENAI_BASE_URL=https://api.deepseek.com
-OPENAI_API_KEY=<your DeepSeek key>
-DEMO_MODEL=<model id from DeepSeek's current model list>
-```
-
-OpenAI can be set up the same way with `OPENAI_BASE_URL=https://api.openai.com/v1` (untested).
+The `.env.example` block for Ollama is `OPENAI_BASE_URL=http://localhost:11434/v1`, `OPENAI_API_KEY=ollama` and `DEMO_MODEL=llama3.2:3b`. `.env.example` also has DeepSeek and OpenAI blocks, which are untested. Install details and other notes are in [demo-agent/README.md](demo-agent/README.md#notes-and-limitations).
 
 Langfuse settings are read only from `.env`. `LANGFUSE_*` variables exported in your shell are ignored, so keys for another project cannot leak into the demo. Check which project the keys belong to, and that the model endpoint works:
 
@@ -164,8 +154,6 @@ python3 demo-agent/check_langfuse_project.py
 ```
 
 `check_langfuse_project.py` prints the host, project name and project ID. `check_model.py` sends one request that should produce a tool call. With `llama3.2:3b` it called `get_order_status` and took 15 seconds on the first request.
-
-If a script fails with a certificate error on a python.org build of Python, set `SSL_CERT_FILE` to your CA bundle, for example `SSL_CERT_FILE=/etc/ssl/cert.pem` on macOS.
 
 Instead of calling `.venv/bin/python`, you can run `source .venv/bin/activate` first and use `python`.
 
@@ -249,8 +237,6 @@ Only the failing test for `cancel_bare_number` now passes. The `BK-` instruction
 
 The 5 passing control tests still pass. The three repeats were identical at temperature 0, so they add little. No assertions were changed. With this small model, descriptions alone fixed 1 of 5 failures. The other four probably need server error messages, a system prompt change or a stronger model.
 
-The `llm-rubric` assertions are graded by the same 3B model, and the grading looked unreliable in this run. For `cancel_shipped_order` the grader's reason read as if the reply met the rubric while the assertion failed. Treat the deterministic `javascript` assertions as the result.
-
 ## Running the tests
 
 ```
@@ -265,20 +251,15 @@ The tests cover `summarize_trace.py` and `fetch_trace.py` using fixtures in `tes
 
 ## Limitations
 
-- Status: the unit tests, the script commands, `fetch_trace.py` on real traces, `run_demo.py`, `export_traces.py`, the skill on eight real traces (`claude -p`) and `promptfoo eval` have been run, with `llama3.2:3b` on Ollama. Not done: the promptfoo run after applying the suggested fixes to `tools.json`, a run with DeepSeek or OpenAI (their `.env.example` blocks are untested), and a run with the GPU (Ollama used the CPU only).
-- The plugin install path (`/plugin marketplace add`, `/plugin install`) has not been tested end to end. `claude plugin validate .` passes.
 - Classification is done by the model from one trace, so it can be wrong. Reports state a confidence level for each finding.
 - It needs the tool definitions. It recovers them from the generation input in the trace; if they are not there, you have to supply them.
-- The skill has been run on eight traces from one demo agent and one model. The parser is also tested on hand-made fixtures in Anthropic and OpenAI-style (`tool_calls`) formats. The demo agent uses the OpenAI chat completions format.
 - It handles one trace at a time.
-- The promptfoo tests replay a single model step, not the whole agent, and model output varies between runs. Run a test before and after the fix.
-- The example model is small: a 3B model on CPU. What it does varies by model and by run, even at temperature 0. The scenarios in `demo-agent/` did not all behave as designed. A second run of `run_demo.py` with the same model at temperature 0 called `cancel_order` in `undo_delivered_order`, where the recorded run called `start_return`. The live promptfoo replay of that trace also called `cancel_order`.
-- Ollama's default context is 4096 tokens. A long conversation or many tools can be cut off.
-- In the example traces, `llm-call-2` reports fewer input tokens (136 to 201) than `llm-call-1` (about 520), although its prompt is longer. This is probably Ollama counting only tokens outside its prompt cache. It was not verified.
-- If a thinking model returns a `reasoning` field, promptfoo drops the tool calls from the output (see [output-format.md](skills/langfuse-trace-triage/reference/output-format.md)).
-- `llm-rubric` assertions graded by a small local model are weak. Trust the `javascript` assertions.
+- The promptfoo tests replay a single model step, not the whole agent, and model output varies between runs. Run a test before and after the fix. In the fix loop above, description changes alone fixed 1 of 5 failing tests with the small example model.
 - `fetch_trace.py` rebuilds the trace from observations, so trace-level fields come from the root observation.
 - `summarize_trace.py` pairs requested tool calls with tool observations by name and arguments, so identical repeated calls can be paired wrongly.
+- The plugin install path (`/plugin marketplace add`, `/plugin install`) has not been tested end to end. `claude plugin validate .` passes.
+
+More notes on the demo agent and the example model are in [demo-agent/README.md](demo-agent/README.md#notes-and-limitations).
 
 ## License
 
