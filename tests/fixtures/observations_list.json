@@ -1,0 +1,112 @@
+[
+  {
+    "id": "o-g1",
+    "traceId": "tr-list-0006",
+    "type": "GENERATION",
+    "name": "llm-call-1",
+    "startTime": "2026-03-02T14:00:00.100Z",
+    "endTime": "2026-03-02T14:00:01.000Z",
+    "completionStartTime": null,
+    "model": "claude-haiku-5-5",
+    "modelParameters": {
+      "max_tokens": 1024
+    },
+    "input": {
+      "messages": [
+        {
+          "role": "user",
+          "content": [
+            {
+              "type": "text",
+              "text": "Any books by Ana Ruiz?"
+            }
+          ]
+        }
+      ],
+      "tools": [
+        {
+          "name": "search_books",
+          "description": "Search the catalog by title, author or topic. Returns up to 5 matches with price and stock.",
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "query": {
+                "type": "string",
+                "description": "Free-text search"
+              }
+            },
+            "required": [
+              "query"
+            ]
+          }
+        },
+        {
+          "name": "get_order_status",
+          "description": "Look up an order by its ID and return status and shipping details.",
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "order_id": {
+                "type": "string",
+                "description": "Order ID, for example BK-1042"
+              }
+            },
+            "required": [
+              "order_id"
+            ]
+          }
+        }
+      ]
+    },
+    "output": {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "tool_use",
+          "id": "toolu_06",
+          "name": "search_books",
+          "input": {
+            "query": "Ana Ruiz"
+          }
+        }
+      ]
+    },
+    "version": null,
+    "metadata": {},
+    "usage": null,
+    "usageDetails": {},
+    "level": "DEFAULT",
+    "statusMessage": null,
+    "parentObservationId": null,
+    "promptId": null,
+    "environment": "default",
+    "latency": null,
+    "timeToFirstToken": null
+  },
+  {
+    "id": "o-t1",
+    "traceId": "tr-list-0006",
+    "type": "TOOL",
+    "name": "tool:search_books",
+    "startTime": "2026-03-02T14:00:01.100Z",
+    "endTime": "2026-03-02T14:00:01.200Z",
+    "completionStartTime": null,
+    "model": null,
+    "modelParameters": null,
+    "input": {
+      "query": "Ana Ruiz"
+    },
+    "output": [],
+    "version": null,
+    "metadata": {},
+    "usage": null,
+    "usageDetails": {},
+    "level": "DEFAULT",
+    "statusMessage": null,
+    "parentObservationId": null,
+    "promptId": null,
+    "environment": "default",
+    "latency": null,
+    "timeToFirstToken": null
+  }
+]

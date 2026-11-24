@@ -1,0 +1,404 @@
+{
+  "id": "tr-multi-0004",
+  "timestamp": "2026-03-02T13:00:00.000Z",
+  "name": "bookstore-support",
+  "input": "Do you have The Quiet Orchard, and where is order BK-2001?",
+  "output": "Yes, The Quiet Orchard is in stock at 12.50. Order BK-2001 is still processing.",
+  "sessionId": null,
+  "release": null,
+  "version": null,
+  "userId": "user-demo-1",
+  "metadata": {
+    "scenario_id": "s1"
+  },
+  "tags": [
+    "demo"
+  ],
+  "public": false,
+  "environment": "default",
+  "latency": 2.1,
+  "totalCost": 0.0012,
+  "observations": [
+    {
+      "id": "o-g3",
+      "traceId": "tr-multi-0004",
+      "type": "GENERATION",
+      "name": "llm-call-3",
+      "startTime": "2026-03-02T13:00:03.000Z",
+      "endTime": "2026-03-02T13:00:04.000Z",
+      "completionStartTime": null,
+      "model": "claude-haiku-5-5",
+      "modelParameters": {
+        "max_tokens": 1024
+      },
+      "input": {
+        "system": "You are a support assistant for Pagewise Books, an online bookstore. Be brief and polite.",
+        "messages": [
+          {
+            "role": "user",
+            "content": "Do you have The Quiet Orchard, and where is order BK-2001?"
+          },
+          {
+            "role": "assistant",
+            "content": [
+              {
+                "type": "tool_use",
+                "id": "toolu_03A",
+                "name": "search_books",
+                "input": {
+                  "query": "The Quiet Orchard"
+                }
+              }
+            ]
+          },
+          {
+            "role": "user",
+            "content": [
+              {
+                "type": "tool_result",
+                "tool_use_id": "toolu_03A",
+                "content": "[{\"title\": \"The Quiet Orchard\", \"price\": 12.5, \"in_stock\": true}]"
+              }
+            ]
+          },
+          {
+            "role": "assistant",
+            "content": [
+              {
+                "type": "tool_use",
+                "id": "toolu_03B",
+                "name": "get_order_status",
+                "input": {
+                  "order_id": "BK-2001"
+                }
+              }
+            ]
+          },
+          {
+            "role": "user",
+            "content": [
+              {
+                "type": "tool_result",
+                "tool_use_id": "toolu_03B",
+                "content": "{\"status\": \"processing\"}"
+              }
+            ]
+          }
+        ],
+        "tools": [
+          {
+            "name": "search_books",
+            "description": "Search the catalog by title, author or topic. Returns up to 5 matches with price and stock.",
+            "input_schema": {
+              "type": "object",
+              "properties": {
+                "query": {
+                  "type": "string",
+                  "description": "Free-text search"
+                }
+              },
+              "required": [
+                "query"
+              ]
+            }
+          },
+          {
+            "name": "get_order_status",
+            "description": "Look up an order by its ID and return status and shipping details.",
+            "input_schema": {
+              "type": "object",
+              "properties": {
+                "order_id": {
+                  "type": "string",
+                  "description": "Order ID, for example BK-1042"
+                }
+              },
+              "required": [
+                "order_id"
+              ]
+            }
+          }
+        ]
+      },
+      "output": [
+        {
+          "type": "text",
+          "text": "Yes, The Quiet Orchard is in stock at 12.50. Order BK-2001 is still processing."
+        }
+      ],
+      "version": null,
+      "metadata": {},
+      "usage": null,
+      "usageDetails": {},
+      "level": "DEFAULT",
+      "statusMessage": null,
+      "parentObservationId": "o-root",
+      "promptId": null,
+      "environment": "default",
+      "latency": null,
+      "timeToFirstToken": null
+    },
+    {
+      "id": "o-t2",
+      "traceId": "tr-multi-0004",
+      "type": "SPAN",
+      "name": "tool:get_order_status",
+      "startTime": "2026-03-02T13:00:02.100Z",
+      "endTime": "2026-03-02T13:00:02.200Z",
+      "completionStartTime": null,
+      "model": null,
+      "modelParameters": null,
+      "input": {
+        "order_id": "BK-2001"
+      },
+      "output": {
+        "status": "processing"
+      },
+      "version": null,
+      "metadata": {},
+      "usage": null,
+      "usageDetails": {},
+      "level": "DEFAULT",
+      "statusMessage": null,
+      "parentObservationId": "o-root",
+      "promptId": null,
+      "environment": "default",
+      "latency": null,
+      "timeToFirstToken": null
+    },
+    {
+      "id": "o-g1",
+      "traceId": "tr-multi-0004",
+      "type": "GENERATION",
+      "name": "llm-call-1",
+      "startTime": "2026-03-02T13:00:00.100Z",
+      "endTime": "2026-03-02T13:00:01.000Z",
+      "completionStartTime": null,
+      "model": "claude-haiku-5-5",
+      "modelParameters": {
+        "max_tokens": 1024
+      },
+      "input": {
+        "system": "You are a support assistant for Pagewise Books, an online bookstore. Be brief and polite.",
+        "messages": [
+          {
+            "role": "user",
+            "content": "Do you have The Quiet Orchard, and where is order BK-2001?"
+          }
+        ],
+        "tools": [
+          {
+            "name": "search_books",
+            "description": "Search the catalog by title, author or topic. Returns up to 5 matches with price and stock.",
+            "input_schema": {
+              "type": "object",
+              "properties": {
+                "query": {
+                  "type": "string",
+                  "description": "Free-text search"
+                }
+              },
+              "required": [
+                "query"
+              ]
+            }
+          },
+          {
+            "name": "get_order_status",
+            "description": "Look up an order by its ID and return status and shipping details.",
+            "input_schema": {
+              "type": "object",
+              "properties": {
+                "order_id": {
+                  "type": "string",
+                  "description": "Order ID, for example BK-1042"
+                }
+              },
+              "required": [
+                "order_id"
+              ]
+            }
+          }
+        ]
+      },
+      "output": [
+        {
+          "type": "tool_use",
+          "id": "toolu_03A",
+          "name": "search_books",
+          "input": {
+            "query": "The Quiet Orchard"
+          }
+        }
+      ],
+      "version": null,
+      "metadata": {},
+      "usage": null,
+      "usageDetails": {},
+      "level": "DEFAULT",
+      "statusMessage": null,
+      "parentObservationId": "o-root",
+      "promptId": null,
+      "environment": "default",
+      "latency": null,
+      "timeToFirstToken": null
+    },
+    {
+      "id": "o-root",
+      "traceId": "tr-multi-0004",
+      "type": "SPAN",
+      "name": "agent-run",
+      "startTime": "2026-03-02T13:00:00.000Z",
+      "endTime": "2026-03-02T13:00:04.000Z",
+      "completionStartTime": null,
+      "model": null,
+      "modelParameters": null,
+      "input": null,
+      "output": "Yes, The Quiet Orchard is in stock at 12.50. Order BK-2001 is still processing.",
+      "version": null,
+      "metadata": {},
+      "usage": null,
+      "usageDetails": {},
+      "level": "DEFAULT",
+      "statusMessage": null,
+      "parentObservationId": null,
+      "promptId": null,
+      "environment": "default",
+      "latency": null,
+      "timeToFirstToken": null
+    },
+    {
+      "id": "o-t1",
+      "traceId": "tr-multi-0004",
+      "type": "TOOL",
+      "name": "tool:search_books",
+      "startTime": "2026-03-02T13:00:01.100Z",
+      "endTime": "2026-03-02T13:00:01.200Z",
+      "completionStartTime": null,
+      "model": null,
+      "modelParameters": null,
+      "input": {
+        "query": "The Quiet Orchard"
+      },
+      "output": [
+        {
+          "title": "The Quiet Orchard",
+          "price": 12.5,
+          "in_stock": true
+        }
+      ],
+      "version": null,
+      "metadata": {},
+      "usage": null,
+      "usageDetails": {},
+      "level": "DEFAULT",
+      "statusMessage": null,
+      "parentObservationId": "o-root",
+      "promptId": null,
+      "environment": "default",
+      "latency": null,
+      "timeToFirstToken": null
+    },
+    {
+      "id": "o-g2",
+      "traceId": "tr-multi-0004",
+      "type": "GENERATION",
+      "name": "llm-call-2",
+      "startTime": "2026-03-02T13:00:01.300Z",
+      "endTime": "2026-03-02T13:00:02.000Z",
+      "completionStartTime": null,
+      "model": "claude-haiku-5-5",
+      "modelParameters": {
+        "max_tokens": 1024
+      },
+      "input": {
+        "system": "You are a support assistant for Pagewise Books, an online bookstore. Be brief and polite.",
+        "messages": [
+          {
+            "role": "user",
+            "content": "Do you have The Quiet Orchard, and where is order BK-2001?"
+          },
+          {
+            "role": "assistant",
+            "content": [
+              {
+                "type": "tool_use",
+                "id": "toolu_03A",
+                "name": "search_books",
+                "input": {
+                  "query": "The Quiet Orchard"
+                }
+              }
+            ]
+          },
+          {
+            "role": "user",
+            "content": [
+              {
+                "type": "tool_result",
+                "tool_use_id": "toolu_03A",
+                "content": "[{\"title\": \"The Quiet Orchard\", \"price\": 12.5, \"in_stock\": true}]"
+              }
+            ]
+          }
+        ],
+        "tools": [
+          {
+            "name": "search_books",
+            "description": "Search the catalog by title, author or topic. Returns up to 5 matches with price and stock.",
+            "input_schema": {
+              "type": "object",
+              "properties": {
+                "query": {
+                  "type": "string",
+                  "description": "Free-text search"
+                }
+              },
+              "required": [
+                "query"
+              ]
+            }
+          },
+          {
+            "name": "get_order_status",
+            "description": "Look up an order by its ID and return status and shipping details.",
+            "input_schema": {
+              "type": "object",
+              "properties": {
+                "order_id": {
+                  "type": "string",
+                  "description": "Order ID, for example BK-1042"
+                }
+              },
+              "required": [
+                "order_id"
+              ]
+            }
+          }
+        ]
+      },
+      "output": [
+        {
+          "type": "tool_use",
+          "id": "toolu_03B",
+          "name": "get_order_status",
+          "input": {
+            "order_id": "BK-2001"
+          }
+        }
+      ],
+      "version": null,
+      "metadata": {},
+      "usage": null,
+      "usageDetails": {},
+      "level": "DEFAULT",
+      "statusMessage": null,
+      "parentObservationId": "o-root",
+      "promptId": null,
+      "environment": "default",
+      "latency": null,
+      "timeToFirstToken": null
+    }
+  ],
+  "scores": []
+}

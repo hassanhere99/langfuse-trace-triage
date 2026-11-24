@@ -1,0 +1,173 @@
+{
+  "id": "tr-openai-0007",
+  "timestamp": "2026-03-02T15:00:00.000Z",
+  "name": "support-openai",
+  "input": "Track BK-3003",
+  "output": "BK-3003 was delivered.",
+  "sessionId": null,
+  "release": null,
+  "version": null,
+  "userId": "user-demo-1",
+  "metadata": {
+    "scenario_id": "s1"
+  },
+  "tags": [
+    "demo"
+  ],
+  "public": false,
+  "environment": "default",
+  "latency": 2.1,
+  "totalCost": 0.0012,
+  "observations": [
+    {
+      "id": "o-g1",
+      "traceId": "tr-openai-0007",
+      "type": "GENERATION",
+      "name": "llm-call-1",
+      "startTime": "2026-03-02T15:00:00.100Z",
+      "endTime": "2026-03-02T15:00:01.000Z",
+      "completionStartTime": null,
+      "model": "gpt-test",
+      "modelParameters": {
+        "max_tokens": 1024
+      },
+      "input": {
+        "messages": [
+          {
+            "role": "system",
+            "content": "You are a support assistant for Pagewise Books, an online bookstore. Be brief and polite."
+          },
+          {
+            "role": "user",
+            "content": "Track BK-3003"
+          }
+        ],
+        "tools": [
+          {
+            "type": "function",
+            "function": {
+              "name": "get_order_status",
+              "description": "Look up an order by its ID.",
+              "parameters": {
+                "type": "object",
+                "properties": {
+                  "order_id": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "order_id"
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "output": {
+        "role": "assistant",
+        "content": null,
+        "tool_calls": [
+          {
+            "id": "call_abc",
+            "type": "function",
+            "function": {
+              "name": "get_order_status",
+              "arguments": "{\"order_id\": \"BK-3003\"}"
+            }
+          }
+        ]
+      },
+      "version": null,
+      "metadata": {},
+      "usage": null,
+      "usageDetails": {},
+      "level": "DEFAULT",
+      "statusMessage": null,
+      "parentObservationId": null,
+      "promptId": null,
+      "environment": "default",
+      "latency": null,
+      "timeToFirstToken": null
+    },
+    {
+      "id": "o-g2",
+      "traceId": "tr-openai-0007",
+      "type": "GENERATION",
+      "name": "llm-call-2",
+      "startTime": "2026-03-02T15:00:01.300Z",
+      "endTime": "2026-03-02T15:00:02.000Z",
+      "completionStartTime": null,
+      "model": "gpt-test",
+      "modelParameters": {
+        "max_tokens": 1024
+      },
+      "input": {
+        "messages": [
+          {
+            "role": "system",
+            "content": "You are a support assistant for Pagewise Books, an online bookstore. Be brief and polite."
+          },
+          {
+            "role": "user",
+            "content": "Track BK-3003"
+          },
+          {
+            "role": "assistant",
+            "content": null,
+            "tool_calls": [
+              {
+                "id": "call_abc",
+                "type": "function",
+                "function": {
+                  "name": "get_order_status",
+                  "arguments": "{\"order_id\": \"BK-3003\"}"
+                }
+              }
+            ]
+          },
+          {
+            "role": "tool",
+            "tool_call_id": "call_abc",
+            "content": "{\"status\": \"delivered\"}"
+          }
+        ],
+        "tools": [
+          {
+            "type": "function",
+            "function": {
+              "name": "get_order_status",
+              "description": "Look up an order by its ID.",
+              "parameters": {
+                "type": "object",
+                "properties": {
+                  "order_id": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "order_id"
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "output": {
+        "role": "assistant",
+        "content": "BK-3003 was delivered."
+      },
+      "version": null,
+      "metadata": {},
+      "usage": null,
+      "usageDetails": {},
+      "level": "DEFAULT",
+      "statusMessage": null,
+      "parentObservationId": null,
+      "promptId": null,
+      "environment": "default",
+      "latency": null,
+      "timeToFirstToken": null
+    }
+  ],
+  "scores": []
+}
