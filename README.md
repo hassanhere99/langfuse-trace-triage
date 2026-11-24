@@ -62,6 +62,8 @@ Two ways to put the skill where Claude Code finds it.
 /plugin install langfuse-trace-triage@langfuse-trace-triage
 ```
 
+Tested on 2026-11-25 with Claude Code 2.1.84: installing from GitHub with `claude plugin marketplace add` and `claude plugin install`, then running the installed skill on an example trace.
+
 A plugin skill is invoked as `/langfuse-trace-triage:langfuse-trace-triage`.
 
 **As a copied or symlinked skill.** Copy or symlink `skills/langfuse-trace-triage` into a project's `.claude/skills/` or into `~/.claude/skills/`:
@@ -262,7 +264,6 @@ The tests cover `summarize_trace.py` and `fetch_trace.py` using fixtures in `tes
 - The promptfoo tests replay a single model step, not the whole agent, and model output varies between runs. Run a test before and after the fix. In the fix loop above, description changes alone fixed 1 of 5 failing tests with the small example model.
 - `fetch_trace.py` rebuilds the trace from observations, so trace-level fields come from the root observation.
 - `summarize_trace.py` pairs requested tool calls with tool observations by name and arguments, so identical repeated calls can be paired wrongly.
-- The plugin install path (`/plugin marketplace add`, `/plugin install`) has not been tested end to end. `claude plugin validate .` passes.
 
 More notes on the demo agent and the example model are in [demo-agent/README.md](demo-agent/README.md#notes-and-limitations).
 
