@@ -140,7 +140,7 @@ OPENAI_API_KEY=<your DeepSeek key>
 DEMO_MODEL=<model id from DeepSeek's current model list>
 ```
 
-OpenAI works the same way with `OPENAI_BASE_URL=https://api.openai.com/v1` (untested).
+OpenAI can be set up the same way with `OPENAI_BASE_URL=https://api.openai.com/v1` (untested).
 
 Langfuse settings are read only from `.env`. `LANGFUSE_*` variables exported in your shell are ignored, so keys for another project cannot leak into the demo. Check which project the keys belong to, and that the model endpoint works:
 
