@@ -208,13 +208,18 @@ The tests cover `summarize_trace.py` and `fetch_trace.py` using fixtures in `tes
 
 ## Limitations
 
-- Status: only the unit tests and the offline script commands (`summarize_trace.py`, `fetch_trace.py --help` and its missing-keys error, `demo-agent/tools.py --dump-tools`) have been run. `fetch_trace.py` with a real trace ID, `run_demo.py` with keys, `export_traces.py` and `promptfoo eval` have not been run yet.
+- Status: the unit tests, the script commands, `fetch_trace.py` on real traces, `run_demo.py`, `export_traces.py`, the skill on eight real traces (`claude -p`) and `promptfoo eval` have been run, with `llama3.2:3b` on Ollama. Not done: the promptfoo run after applying the suggested fixes to `tools.json`, a run with DeepSeek or OpenAI (their `.env.example` blocks are untested), and a run with the GPU (Ollama used the CPU only).
 - The plugin install path (`/plugin marketplace add`, `/plugin install`) has not been tested end to end. `claude plugin validate .` passes.
 - Classification is done by the model from one trace, so it can be wrong. Reports state a confidence level for each finding.
 - It needs the tool definitions. It recovers them from the generation input in the trace; if they are not there, you have to supply them.
-- The skill has not been run on real traces yet. The parser is tested only on hand-made fixtures, in Anthropic and OpenAI-style (`tool_calls`) formats. The demo agent uses the Anthropic format.
+- The skill has been run on eight traces from one demo agent and one model. The parser is also tested on hand-made fixtures in Anthropic and OpenAI-style (`tool_calls`) formats. The demo agent uses the OpenAI chat completions format.
 - It handles one trace at a time.
 - The promptfoo tests replay a single model step, not the whole agent, and model output varies between runs. Run a test before and after the fix.
+- The example model is small: a 3B model on CPU. What it does varies by model and by run, even at temperature 0. The scenarios in `demo-agent/` did not all behave as designed.
+- Ollama's default context is 4096 tokens. A long conversation or many tools can be cut off.
+- In the example traces, `llm-call-2` reports fewer input tokens (136 to 201) than `llm-call-1` (about 520), although its prompt is longer. This is probably Ollama counting only tokens outside its prompt cache. It was not verified.
+- If a thinking model returns a `reasoning` field, promptfoo drops the tool calls from the output (see [output-format.md](skills/langfuse-trace-triage/reference/output-format.md)).
+- `llm-rubric` assertions graded by a small local model are weak. Trust the `javascript` assertions.
 - `fetch_trace.py` rebuilds the trace from observations, so trace-level fields come from the root observation.
 - `summarize_trace.py` pairs requested tool calls with tool observations by name and arguments, so identical repeated calls can be paired wrongly.
 
