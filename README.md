@@ -200,7 +200,42 @@ npx promptfoo@latest eval -c examples/promptfoo/promptfooconfig.yaml --env-file 
 
 With Ollama this needs no paid key. The tests run against the same endpoint and model as the agent, read from `OPENAI_BASE_URL`, `OPENAI_API_KEY` and `DEMO_MODEL`. The latest promptfoo needs a recent Node. Version 0.126.0 ran on Node 26.13.1. If `node --version` is too old, run `nvm install --lts` and then `nvm exec 26 npx promptfoo@latest ...`. You can set `PROMPTFOO_DISABLE_TELEMETRY=1`. promptfoo exits with code 100 when any test fails.
 
-Result of the recorded run (`llama3.2:3b`, temperature 0, 1 minute 34 seconds): 10 tests, 5 passed, 5 failed, 0 errors. The 10 tests come from 8 traces, because two traces have two tests each. The 5 failures are the tests for the 5 failing traces (`undo_delivered_order`, `cancel_bare_number`, `cancel_shipped_order`, `return_processing_order`, `unneeded_lookup`). They are meant to fail against the tool definitions as recorded in `tools.json`. The 5 passes are the tests for the runs that worked. The run after applying the suggested fixes to `tools.json` was not done, so it is not shown that the fixes make the failing tests pass.
+Result of the recorded run (`llama3.2:3b`, temperature 0, 1 minute 34 seconds): 10 tests, 5 passed, 5 failed, 0 errors. The 10 tests come from 8 traces, because two traces have two tests each. The 5 failures are the tests for the 5 failing traces (`undo_delivered_order`, `cancel_bare_number`, `cancel_shipped_order`, `return_processing_order`, `unneeded_lookup`). They are meant to fail against the tool definitions as recorded in `tools.json`. The 5 passes are the tests for the runs that worked.
+
+### Fix loop: the same tests against the suggested fixes
+
+`examples/promptfoo/promptfooconfig.fixed.yaml` runs the same tests against `examples/promptfoo/tools.fixed.json`. That file is `tools.json` with the description and schema fixes from the reports applied. It was built by hand from the reports' diffs. Where reports overlapped, the fixes were merged. Fixes that change server behaviour, such as better error messages, cannot be expressed in `tools.json` and were not applied. One merge decision: `start_return` is limited to delivered orders, where one report said "shipped or delivered".
+
+```
+npx promptfoo@latest eval -c examples/promptfoo/promptfooconfig.yaml --env-file .env
+npx promptfoo@latest eval -c examples/promptfoo/promptfooconfig.fixed.yaml --env-file .env
+```
+
+Both runs used `llama3.2:3b`, temperature 0 and `--repeat 3`, so 10 tests x 3 = 30 results each. Passes per test, out of 3:
+
+| trace | test | before | after |
+|---|---|---|---|
+| `search_by_title` | stock and price: `search_books` with title | 3/3 | 3/3 |
+| `shipping_policy` | shipping: `get_store_policy` with shipping | 3/3 | 3/3 |
+| `shipping_policy` | final answer has time and cost | 3/3 | 3/3 |
+| `undo_delivered_order` | starts with `get_order_status` | 0/3 | 0/3 |
+| `cancel_bare_number` | bare number cancel uses the `BK-` ID | 0/3 | 3/3 |
+| `return_window_from_memory` | returns question: `get_store_policy` with returns | 3/3 | 3/3 |
+| `return_window_from_memory` | final answer gives 30 days | 3/3 | 3/3 |
+| `cancel_shipped_order` | after failed cancel, no return offered | 0/3 | 0/3 |
+| `return_processing_order` | after failed `start_return`, offer `cancel_order`, no invented policy | 0/3 | 0/3 |
+| `unneeded_lookup` | question about a 14-year-old answered without search | 0/3 | 0/3 |
+
+Overall: before 15 passed, 15 failed; after 18 passed, 12 failed; 0 errors in both.
+
+Only the failing test for `cancel_bare_number` now passes. The `BK-` instruction in the `order_id` description made the model add the prefix every time. The other four still fail:
+
+- `undo_delivered_order`: the model still calls a state-changing tool without `get_order_status`. It now calls `cancel_order` instead of `start_return`.
+- `cancel_shipped_order`: after the error the model still offers a return shipping label.
+- `return_processing_order`: the model still says returns are possible for "shipped or delivered" orders and does not offer `cancel_order`.
+- `unneeded_lookup`: the model still calls `search_books` for a question about a book's age suitability.
+
+The 5 passing control tests still pass. The three repeats were identical at temperature 0, so they add little. No assertions were changed. With this small model, descriptions alone fixed 1 of 5 failures. The other four probably need server error messages, a system prompt change or a stronger model.
 
 The `llm-rubric` assertions are graded by the same 3B model, and the grading looked unreliable in this run. For `cancel_shipped_order` the grader's reason read as if the reply met the rubric while the assertion failed. Treat the deterministic `javascript` assertions as the result.
 
