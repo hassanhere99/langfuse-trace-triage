@@ -6,6 +6,18 @@ A Claude Code skill that reads a Langfuse trace from an LLM agent and works out 
 
 The skill is read-only. It never writes to or deletes anything in Langfuse, and trace data goes only to the model running the skill.
 
+## Quick start
+
+To try the skill on a committed example trace you need only Claude Code, no Langfuse account and no model endpoint:
+
+```
+git clone https://github.com/hassanhere99/langfuse-trace-triage && cd langfuse-trace-triage
+claude --plugin-dir .
+# then ask: Triage the exported trace at examples/traces/cancel_bare_number.json
+```
+
+The skill writes `<trace_id>.md` and `<trace_id>.yaml` in the current directory.
+
 ## Example
 
 `examples/` holds a real run. The demo agent in `demo-agent/` produced the traces with `llama3.2:3b` on a local Ollama server (CPU only). The reports in `examples/reports/` and the promptfoo tests in `examples/promptfoo/` were written by the skill, run once per trace with `claude -p` on `claude-sonnet-5-5`. They were not edited by hand.
