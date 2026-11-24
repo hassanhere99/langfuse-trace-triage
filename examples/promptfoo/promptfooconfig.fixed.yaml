@@ -1,0 +1,29 @@
+# Same tests and settings as promptfooconfig.yaml; only the tool definitions differ (tools.fixed.json has the reports' suggested fixes applied).
+description: Replay the same failing generations from Langfuse traces against the fixed tool definitions (tools.fixed.json)
+prompts:
+  - file://chat.json          # the whole file is one line: {{ messages | dump }}
+providers:
+  - id: openai:chat:{{ env.DEMO_MODEL }}
+    config:
+      apiBaseUrl: '{{ env.OPENAI_BASE_URL }}'
+      apiKey: '{{ env.OPENAI_API_KEY }}'
+      temperature: 0
+      max_tokens: 1024
+      tools: file://tools.fixed.json
+defaultTest:
+  options:
+    provider:                 # grader for llm-rubric assertions: same endpoint
+      id: openai:chat:{{ env.DEMO_MODEL }}
+      config:
+        apiBaseUrl: '{{ env.OPENAI_BASE_URL }}'
+        apiKey: '{{ env.OPENAI_API_KEY }}'
+        temperature: 0
+tests:
+  - file://568e32113f4afef938854f6caee45376.yaml
+  - file://361515fd899d5188fe2010adc2d56d40.yaml
+  - file://52a42ef6a07b1118928148c537b9a39d.yaml
+  - file://4e30ecd2dd0cd2465c2fafac242f5a8c.yaml
+  - file://ae32154e0914ea89e0cf8e77b1e72564.yaml
+  - file://dfd0865869ace75001ee6ce844dcb4d4.yaml
+  - file://2f3a8af0320782aaf84fbe2d7e5205c2.yaml
+  - file://d16c62931b297a2bcd47834deb76a519.yaml
