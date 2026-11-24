@@ -83,75 +83,60 @@ POLICIES = {
     ),
 }
 
-# --- Tool definitions (Anthropic tool format) -------------------------------------------
+# --- Tool definitions (OpenAI chat completions format) ----------------------------------
+
+
+def _tool(name, description, properties, required):
+    return {
+        "type": "function",
+        "function": {
+            "name": name,
+            "description": description,
+            "parameters": {"type": "object", "properties": properties, "required": required},
+        },
+    }
+
 
 TOOLS = [
-    {
-        "name": "search_books",
-        "description": (
-            "Search the bookstore catalog by title, author or ISBN. Returns up to five matching books "
-            "with ISBN, title, author, price in USD and the number of copies in stock."
-        ),
-        "input_schema": {
-            "type": "object",
-            "properties": {
-                "query": {"type": "string", "description": "A title, author name or ISBN to search for."},
-            },
-            "required": ["query"],
+    _tool(
+        "search_books",
+        "Search the bookstore catalog by title, author or ISBN. Returns up to five matching books "
+        "with ISBN, title, author, price in USD and the number of copies in stock.",
+        {"query": {"type": "string", "description": "A title, author name or ISBN to search for."}},
+        ["query"],
+    ),
+    _tool(
+        "get_order_status",
+        "Look up an order and return its status, items and key dates.",
+        # Flaw (b): the format is not stated.
+        {"order_id": {"type": "string", "description": "The order ID"}},
+        ["order_id"],
+    ),
+    # Flaw (a): overlaps with start_return, and does not say it only works before shipping.
+    _tool(
+        "cancel_order",
+        "Undo an order. Use this when the customer wants to reverse or back out of an order they placed.",
+        {"order_id": {"type": "string", "description": "The order ID"}},
+        ["order_id"],
+    ),
+    # Flaw (a): overlaps with cancel_order, and does not say it only works after delivery.
+    _tool(
+        "start_return",
+        "Reverse an order. Use this when the customer wants to undo a purchase and get their money back.",
+        {
+            "order_id": {"type": "string", "description": "The order ID"},
+            "reason": {"type": "string", "description": "Why the customer wants to return the order."},
         },
-    },
-    {
-        "name": "get_order_status",
-        "description": "Look up an order and return its status, items and key dates.",
-        "input_schema": {
-            "type": "object",
-            "properties": {
-                # Flaw (b): the format is not stated.
-                "order_id": {"type": "string", "description": "The order ID"},
-            },
-            "required": ["order_id"],
-        },
-    },
-    {
-        # Flaw (a): overlaps with start_return, and does not say it only works before shipping.
-        "name": "cancel_order",
-        "description": "Undo an order. Use this when the customer wants to reverse or back out of an order they placed.",
-        "input_schema": {
-            "type": "object",
-            "properties": {
-                "order_id": {"type": "string", "description": "The order ID"},
-            },
-            "required": ["order_id"],
-        },
-    },
-    {
-        # Flaw (a): overlaps with cancel_order, and does not say it only works after delivery.
-        "name": "start_return",
-        "description": "Reverse an order. Use this when the customer wants to undo a purchase and get their money back.",
-        "input_schema": {
-            "type": "object",
-            "properties": {
-                "order_id": {"type": "string", "description": "The order ID"},
-                "reason": {"type": "string", "description": "Why the customer wants to return the order."},
-            },
-            "required": ["order_id"],
-        },
-    },
-    {
-        "name": "get_store_policy",
-        "description": (
-            "Return the official store policy text for one topic: returns, shipping or cancellations. "
-            "Use it for questions about how the store's rules work rather than about a specific order."
-        ),
-        "input_schema": {
-            "type": "object",
-            "properties": {
-                "topic": {"type": "string", "enum": ["returns", "shipping", "cancellations"],
-                          "description": "The policy topic to look up."},
-            },
-            "required": ["topic"],
-        },
-    },
+        ["order_id"],
+    ),
+    _tool(
+        "get_store_policy",
+        "Return the official store policy text for one topic: returns, shipping or cancellations. "
+        "Use it for questions about how the store's rules work rather than about a specific order.",
+        {"topic": {"type": "string", "enum": ["returns", "shipping", "cancellations"],
+                   "description": "The policy topic to look up."}},
+        ["topic"],
+    ),
 ]
 
 # --- Implementations --------------------------------------------------------------------

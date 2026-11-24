@@ -27,15 +27,7 @@ SCENARIOS = [
     ("unneeded_lookup", "Is Dune by Frank Herbert a good book for a 14 year old?", None),
 ]
 
-REQUIRED_ENV = ["DEMO_MODEL", "ANTHROPIC_API_KEY", "LANGFUSE_PUBLIC_KEY", "LANGFUSE_SECRET_KEY"]
-
-
-def load_env():
-    try:
-        from dotenv import load_dotenv
-    except ImportError:
-        return
-    load_dotenv(ROOT / ".env", override=True)
+REQUIRED_ENV = ["OPENAI_BASE_URL", "OPENAI_API_KEY", "DEMO_MODEL", "LANGFUSE_PUBLIC_KEY", "LANGFUSE_SECRET_KEY", "LANGFUSE_HOST"]
 
 
 def check_env():
@@ -43,16 +35,21 @@ def check_env():
     if missing:
         sys.stderr.write(
             "Missing required environment variables: " + ", ".join(missing) + "\n"
-            "Set them in your shell or in a .env file at the repo root (see .env.example).\n"
-            "DEMO_MODEL is a model ID such as claude-haiku-5-5. LANGFUSE_HOST is optional "
-            "(defaults to https://cloud.langfuse.com).\n"
+            "Set them in the .env file at the repo root (see .env.example).\n"
+            "OPENAI_BASE_URL, OPENAI_API_KEY and DEMO_MODEL point the agent at any OpenAI-compatible endpoint.\n"
         )
         sys.exit(2)
 
 
 def main():
-    load_env()
+    from repo_env import load_repo_env
+    load_repo_env()
     check_env()
+
+    # Show where the traces will go before sending anything.
+    from check_langfuse_project import describe, get_projects
+    print(describe(*get_projects()))
+    print(f"Model: {os.environ['DEMO_MODEL']} at {os.environ['OPENAI_BASE_URL']}\n")
 
     import tools as bookstore
     from agent import run_turn
@@ -88,6 +85,7 @@ def main():
     out = {
         "run_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "model": model,
+        "base_url": os.environ["OPENAI_BASE_URL"],
         "traces": [{"scenario_id": sid, "trace_id": tid} for sid, tid, _, _ in rows],
     }
     (HERE / "last_run.json").write_text(json.dumps(out, indent=2) + "\n")

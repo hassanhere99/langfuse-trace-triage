@@ -1,21 +1,26 @@
-"""Bookstore support agent: an Anthropic tool-use loop instrumented with Langfuse.
+"""Bookstore support agent: an OpenAI-compatible chat completions tool loop, instrumented with Langfuse.
+
+Works with any OpenAI-compatible endpoint. The endpoint, key and model come only from the
+environment (OPENAI_BASE_URL, OPENAI_API_KEY, DEMO_MODEL), normally set in the repo-root .env.
 
 Trace layout (one trace per user message):
     trace name   bookstore-support, metadata.scenario_id
     agent-run    root span; its input/output become the trace input/output
-      llm-call-1 GENERATION, input {"system", "messages", "tools"}, output = text and tool_use blocks
+      llm-call-1 GENERATION, input {"messages", "tools"} exactly as sent (system prompt is the first
+                 message), output = the assistant message {"role", "content", "tool_calls"}
       tool:<name> TOOL observation, input = arguments, output = result; level ERROR on tool errors
       llm-call-2 ...
 """
 from __future__ import annotations
 
+import json
 import os
 import sys
 from dataclasses import dataclass, field
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-import anthropic  # noqa: E402
+import openai  # noqa: E402
 from langfuse import get_client, propagate_attributes  # noqa: E402
 
 import tools as bookstore  # noqa: E402
@@ -27,7 +32,10 @@ SYSTEM_PROMPT = (
 )
 MAX_ITERATIONS = 6
 MAX_TOKENS = 4096
+TEMPERATURE = 0
 TRACE_NAME = "bookstore-support"
+ENDPOINT_ENV = ("OPENAI_BASE_URL", "OPENAI_API_KEY", "DEMO_MODEL")
+REQUEST_TIMEOUT = 900  # seconds; a local model on CPU can be slow
 
 
 @dataclass
@@ -37,24 +45,45 @@ class TurnResult:
     tool_calls: list = field(default_factory=list)  # [{"name", "input", "result", "is_error"}]
 
 
-def _visible_blocks(content):
-    """Text and tool_use blocks as plain dicts (thinking blocks are left out of what we record)."""
-    out = []
-    for block in content:
-        d = block if isinstance(block, dict) else block.model_dump(exclude_none=True)
-        if d.get("type") in ("text", "tool_use"):
-            out.append(d)
+def make_client():
+    missing = [k for k in ENDPOINT_ENV if not os.environ.get(k)]
+    if missing:
+        raise RuntimeError("Missing environment variables: " + ", ".join(missing))
+    return openai.OpenAI(
+        base_url=os.environ["OPENAI_BASE_URL"],
+        api_key=os.environ["OPENAI_API_KEY"],
+        timeout=REQUEST_TIMEOUT,
+        max_retries=0,
+    )
+
+
+def _assistant_message(message):
+    """The assistant message as a plain dict: role, content and tool_calls only.
+
+    Reasoning text that some servers return for thinking models (a `reasoning` or
+    `reasoning_content` field) is left out of what we record and of what we send back.
+    """
+    out = {"role": "assistant", "content": message.content or ""}
+    if message.tool_calls:
+        out["tool_calls"] = [
+            {"id": tc.id, "type": "function",
+             "function": {"name": tc.function.name, "arguments": tc.function.arguments}}
+            for tc in message.tool_calls
+        ]
     return out
 
 
-def _recordable_messages(messages):
-    rec = []
-    for m in messages:
-        if isinstance(m["content"], str):
-            rec.append(m)
-        else:
-            rec.append({"role": m["role"], "content": _visible_blocks(m["content"])})
-    return rec
+def _parse_arguments(raw):
+    """Tool arguments arrive as a JSON string. Returns (dict, error_or_None)."""
+    if isinstance(raw, dict):
+        return raw, None
+    try:
+        args = json.loads(raw or "{}")
+    except json.JSONDecodeError as exc:
+        return {"_raw": raw}, f"Tool arguments are not valid JSON: {exc}"
+    if not isinstance(args, dict):
+        return {"_raw": raw}, "Tool arguments must be a JSON object"
+    return args, None
 
 
 def run_turn(user_message, scenario_id, client=None, model=None):
@@ -62,10 +91,10 @@ def run_turn(user_message, scenario_id, client=None, model=None):
     model = model or os.environ.get("DEMO_MODEL")
     if not model:
         raise RuntimeError("DEMO_MODEL is not set")
-    client = client or anthropic.Anthropic()
+    client = client or make_client()
     lf = get_client()
 
-    messages = [{"role": "user", "content": user_message}]
+    messages = [{"role": "system", "content": SYSTEM_PROMPT}, {"role": "user", "content": user_message}]
     tool_calls = []
     final_text = ""
 
@@ -75,60 +104,54 @@ def run_turn(user_message, scenario_id, client=None, model=None):
             for n in range(1, MAX_ITERATIONS + 1):
                 with lf.start_as_current_observation(
                     as_type="generation", name=f"llm-call-{n}", model=model,
-                    input={"system": SYSTEM_PROMPT, "messages": _recordable_messages(messages), "tools": bookstore.TOOLS},
+                    model_parameters={"temperature": TEMPERATURE, "max_tokens": MAX_TOKENS},
+                    input={"messages": [dict(m) for m in messages], "tools": bookstore.TOOLS},
                 ) as gen:
                     try:
-                        response = client.messages.create(
-                            model=model, max_tokens=MAX_TOKENS, system=SYSTEM_PROMPT,
-                            tools=bookstore.TOOLS, messages=messages,
+                        response = client.chat.completions.create(
+                            model=model, messages=messages, tools=bookstore.TOOLS,
+                            temperature=TEMPERATURE, max_tokens=MAX_TOKENS,
                         )
                     except Exception as exc:
                         gen.update(level="ERROR", status_message=f"{type(exc).__name__}: {exc}")
                         root.update(output=f"[agent error] {type(exc).__name__}: {exc}", level="ERROR",
                                     status_message=str(exc))
                         raise
-                    gen.update(
-                        output=_visible_blocks(response.content),
-                        usage_details={"input": response.usage.input_tokens, "output": response.usage.output_tokens},
-                        metadata={"stop_reason": response.stop_reason},
-                    )
+                    choice = response.choices[0]
+                    assistant = _assistant_message(choice.message)
+                    usage = {}
+                    if response.usage is not None:
+                        usage = {"input": response.usage.prompt_tokens or 0,
+                                 "output": response.usage.completion_tokens or 0}
+                    gen.update(output=assistant, usage_details=usage,
+                               metadata={"finish_reason": choice.finish_reason})
 
-                # Pass the full content (including any thinking blocks) back unchanged.
-                full_content = [b.model_dump(exclude_none=True) for b in response.content]
-                messages.append({"role": "assistant", "content": full_content})
-                final_text = "".join(b.text for b in response.content if b.type == "text").strip()
+                messages.append(assistant)
+                final_text = (assistant["content"] or "").strip()
 
-                if response.stop_reason != "tool_use":
+                if not assistant.get("tool_calls"):
                     if not final_text:
-                        final_text = f"[no text in response, stop_reason={response.stop_reason}]"
+                        final_text = f"[no text in response, finish_reason={choice.finish_reason}]"
                     break
 
-                results = []
-                for block in response.content:
-                    if block.type != "tool_use":
-                        continue
-                    with lf.start_as_current_observation(
-                        as_type="tool", name=f"tool:{block.name}", input=block.input
-                    ) as obs:
-                        result, is_error = bookstore.execute(block.name, block.input)
+                for tc in assistant["tool_calls"]:
+                    name = tc["function"]["name"]
+                    args, parse_error = _parse_arguments(tc["function"]["arguments"])
+                    with lf.start_as_current_observation(as_type="tool", name=f"tool:{name}", input=args) as obs:
+                        if parse_error:
+                            result, is_error = {"error": parse_error}, True
+                        else:
+                            result, is_error = bookstore.execute(name, args)
                         if is_error:
                             obs.update(output=result, level="ERROR", status_message=result.get("error", "tool error"))
                         else:
                             obs.update(output=result)
-                    tool_calls.append({"name": block.name, "input": block.input, "result": result, "is_error": is_error})
-                    tr = {"type": "tool_result", "tool_use_id": block.id, "content": _dumps(result)}
-                    if is_error:
-                        tr["is_error"] = True
-                    results.append(tr)
-                messages.append({"role": "user", "content": results})
+                    tool_calls.append({"name": name, "input": args, "result": result, "is_error": is_error})
+                    # Chat completions has no error flag on tool results; the error is in the content.
+                    messages.append({"role": "tool", "tool_call_id": tc["id"], "content": json.dumps(result)})
             else:
                 final_text = final_text or "[stopped: maximum tool iterations reached]"
 
             root.update(output=final_text)
 
     return TurnResult(final_text=final_text, trace_id=trace_id, tool_calls=tool_calls)
-
-
-def _dumps(obj):
-    import json
-    return json.dumps(obj)
