@@ -100,10 +100,12 @@ Copy `.env.example` to `.env` at the repo root and fill in `ANTHROPIC_API_KEY`, 
 
 ```
 uv venv .venv
-uv pip install -r demo-agent/requirements.txt    # or: pip install -r demo-agent/requirements.txt
-python3 demo-agent/run_demo.py
-python3 demo-agent/export_traces.py
+uv pip install -r demo-agent/requirements.txt    # or: python3 -m venv .venv && .venv/bin/pip install -r demo-agent/requirements.txt
+.venv/bin/python demo-agent/run_demo.py
+.venv/bin/python demo-agent/export_traces.py
 ```
+
+Instead of calling `.venv/bin/python`, you can run `source .venv/bin/activate` first and use `python`.
 
 `run_demo.py` runs eight fixed messages and attaches a score named `expected_tool_check` to each trace. That score is an automated check by `run_demo.py` (did the first tool called match the expected one, by name only). It is not user feedback. `export_traces.py` fetches the traces and writes stripped copies to `examples/traces/`; read them before committing.
 
@@ -120,9 +122,12 @@ This needs `ANTHROPIC_API_KEY`, and the latest promptfoo needs Node 22.22 or lat
 ## Running the tests
 
 ```
-pip install -r requirements.txt
-python -m pytest
+uv venv .venv
+uv pip install -r requirements.txt    # or: python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
+.venv/bin/python -m pytest
 ```
+
+Instead of calling `.venv/bin/python`, you can run `source .venv/bin/activate` first and use `python`.
 
 The tests cover `summarize_trace.py` and `fetch_trace.py` using fixtures in `tests/fixtures/`. They need no network access or API keys. Current result: 25 passed, 1 skipped. The skipped test checks the traces in `examples/traces/`, which do not exist yet.
 
