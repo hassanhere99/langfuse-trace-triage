@@ -55,24 +55,51 @@ Notes:
 
 The test reproduces the failing model step. It does not run the whole agent.
 
-- The prompt replays the conversation up to the generation that went wrong. Take it from that generation's `input.messages` in the trace, and put `input.system` first as a `system` message.
-- The tool definitions are the ones in the trace's "Tools available" section, saved as `tools.json` and loaded through the provider config. Keep them as they were at trace time, which means the description you want to fix is still the old text in `tools.json`.
+- The prompt replays the conversation up to the generation that went wrong. Take it from that generation's `input.messages` in the trace. If the generation input has a separate `input.system`, put it first as a `system` message.
+- The tool definitions are the ones in the trace's "Tools available" section, saved as `tools.json` and loaded through the provider config. Keep them as they were at trace time, which means the description you want to fix is still the old text in `tools.json`. Keep the format the trace used (OpenAI `{"type": "function", "function": {...}}` or Anthropic `name`/`input_schema`), and use a provider that accepts that format.
 - Prefer deterministic `javascript` assertions on the tool name and arguments. Use an LLM-graded assertion only when the check cannot be written as code, and label it with a `# LLM-graded` comment.
 - The assertions describe correct behaviour. They should fail against the tool definitions as recorded and pass once the suggested fix is applied to `tools.json`. If you cannot show that, say which of the two you did not check.
 
+### Provider
+
+The provider is configurable. By default the test runs against the same OpenAI-compatible endpoint and model as the agent under test, read from the environment, so no model name, URL or key is written into the test files:
+
+| variable | meaning |
+|---|---|
+| `OPENAI_BASE_URL` | the endpoint the agent uses, for example a local Ollama server or a hosted API |
+| `OPENAI_API_KEY` | its key (any non-empty value for servers that ignore it, such as Ollama) |
+| `DEMO_MODEL` | the model name on that endpoint; use the model the agent ran with, which is in the trace's generation `model` field |
+
+If the agent under test reads differently named variables, use those names in the config instead. If it used a different provider type (for example the Anthropic Messages API), replace the provider block with that promptfoo provider and adapt the assertion helper to its output shape.
+
 ### What the assertion receives
 
-With the `anthropic:messages:<model>` provider, `output` is a string. Text blocks come first, and each `tool_use` block is `JSON.stringify` of the whole block on its own line, with blocks separated by a blank line:
+With the `openai:chat:<model>` provider (promptfoo 0.126), `output` depends on what the model returned:
 
+| model returned | `output` |
+|---|---|
+| text only | a string |
+| tool calls and no text | an array of tool calls, `[{"id", "type": "function", "function": {"name", "arguments"}}]` |
+| tool calls and text | the whole message object, `{"role", "content", "tool_calls"}` |
+
+`function.arguments` is a JSON string, not an object. The provider does not run the tools.
+
+If the server returns a `reasoning` field (thinking models on Ollama do), promptfoo sets `output` to the message text only and drops the tool calls. For a thinking model, switch thinking off for the test, for example `passthrough: { reasoning_effort: none }` in the provider config on servers that support it, and check that a tool call shows up in the output.
+
+Start each `javascript` assertion with this helper, which handles all three shapes:
+
+```js
+const msg = typeof output === 'string' ? { content: output, tool_calls: [] }
+  : Array.isArray(output) ? { content: '', tool_calls: output } : output;
+const calls = (msg.tool_calls || []).map((tc) => {
+  let input = {};
+  try { input = JSON.parse(tc.function.arguments || '{}'); } catch (e) { input = { _unparsed: tc.function.arguments }; }
+  return { name: tc.function.name, input };
+});
+const text = msg.content || '';
 ```
-I will look that up.
 
-{"type":"tool_use","id":"toolu_01...","name":"start_return","input":{"order_id":"BK-1001"}}
-```
-
-The provider does not run the tools. The assertions below pick out lines that start with `{"type":"tool_use"` and parse them. A text-only reply has no such line.
-
-Two syntax points checked against promptfoo 0.118: a `javascript` assertion that is a single line is treated as an expression, so `const` fails there; a multi-line value needs an explicit `return`. A `javascript` assertion may return a boolean or an object with `pass`, `score` and `reason`.
+Two syntax points: a `javascript` assertion that is a single line is treated as an expression, so `const` fails there; a multi-line value needs an explicit `return`. A `javascript` assertion may return a boolean or an object with `pass`, `score` and `reason`.
 
 ### Files
 
@@ -85,26 +112,39 @@ description: Replay failing generations from Langfuse traces
 prompts:
   - file://chat.json          # the whole file is one line: {{ messages | dump }}
 providers:
-  - id: anthropic:messages:claude-haiku-5-5   # use the model the agent ran with
+  - id: openai:chat:{{ env.DEMO_MODEL }}
     config:
+      apiBaseUrl: '{{ env.OPENAI_BASE_URL }}'
+      apiKey: '{{ env.OPENAI_API_KEY }}'
       temperature: 0
       max_tokens: 1024
       tools: file://tools.json
+defaultTest:
+  options:
+    provider:                 # grader for llm-rubric assertions: same endpoint
+      id: openai:chat:{{ env.DEMO_MODEL }}
+      config:
+        apiBaseUrl: '{{ env.OPENAI_BASE_URL }}'
+        apiKey: '{{ env.OPENAI_API_KEY }}'
+        temperature: 0
 tests:
   - file://<trace_id>.yaml
 ```
 
-`tools.json`, in Anthropic format (`name`, `description`, `input_schema`), copied from the trace:
+`tools.json`, copied from the trace in the format it was recorded in, here OpenAI:
 
 ```json
 [
   {
-    "name": "cancel_order",
-    "description": "Cancel or undo an order.",
-    "input_schema": {
-      "type": "object",
-      "properties": { "order_id": { "type": "string" } },
-      "required": ["order_id"]
+    "type": "function",
+    "function": {
+      "name": "cancel_order",
+      "description": "Cancel or undo an order.",
+      "parameters": {
+        "type": "object",
+        "properties": { "order_id": { "type": "string" } },
+        "required": ["order_id"]
+      }
     }
   }
 ]
@@ -125,23 +165,26 @@ A customer asked to undo an order that had not shipped. The agent called `start_
       - role: user
         content: "Please undo order BK-1001, I ordered it by mistake."
       - role: assistant
-        content:
-          - type: tool_use
-            id: toolu_01
-            name: get_order_status
-            input: { order_id: "BK-1001" }
-      - role: user
-        content:
-          - type: tool_result
-            tool_use_id: toolu_01
-            content: '{"order_id": "BK-1001", "status": "processing"}'
+        content: ""
+        tool_calls:
+          - id: call_01
+            type: function
+            function:
+              name: get_order_status
+              arguments: '{"order_id": "BK-1001"}'
+      - role: tool
+        tool_call_id: call_01
+        content: '{"order_id": "BK-1001", "status": "processing"}'
   assert:
     - type: javascript
       value: |
-        const calls = output
-          .split('\n')
-          .filter((line) => line.startsWith('{"type":"tool_use"'))
-          .map((line) => JSON.parse(line));
+        const msg = typeof output === 'string' ? { content: output, tool_calls: [] }
+          : Array.isArray(output) ? { content: '', tool_calls: output } : output;
+        const calls = (msg.tool_calls || []).map((tc) => {
+          let input = {};
+          try { input = JSON.parse(tc.function.arguments || '{}'); } catch (e) { input = { _unparsed: tc.function.arguments }; }
+          return { name: tc.function.name, input };
+        });
         const call = calls[0];
         if (!call) return { pass: false, score: 0, reason: 'no tool call in output' };
         const ok = call.name === 'cancel_order' && call.input.order_id === 'BK-1001';
@@ -154,16 +197,16 @@ A customer asked to undo an order that had not shipped. The agent called `start_
 Guidance for writing the assertions:
 
 - Check the tool name and the specific arguments that decide correctness. Do not assert on every argument; unrelated differences should not fail the test.
-- For `missing_tool_call`, assert that a `tool_use` line exists and has the right name.
-- For `unnecessary_tool_call`, assert that no line starts with `{"type":"tool_use"`, or that `calls.length` equals the number the correct run would make.
+- For `missing_tool_call`, assert that `calls` is not empty and the first call has the right name.
+- For `unnecessary_tool_call`, assert that `calls.length` is 0, or equals the number the correct run would make.
 - For `wrong_arguments`, assert the argument value, with a regular expression if the format is the point: `/^BK-\d+$/.test(call.input.order_id)`.
-- For `leaked_internals` and `tool_error_mishandled`, the text of the final answer is what matters. If the replay ends with a tool result and the model is expected to reply in text, `output` is that text; check it with `javascript` (for example, that it does not contain the raw error string) before reaching for `llm-rubric`.
-- Messages containing tool results use `role: user` with `tool_result` blocks, and the preceding assistant message must contain the matching `tool_use` block with the same `id`.
+- For `leaked_internals` and `tool_error_mishandled`, the text of the final answer is what matters. If the replay ends with a tool result and the model is expected to reply in text, check `text` with `javascript` (for example, that it does not contain the raw error string) before reaching for `llm-rubric`.
+- In OpenAI format, a tool result is a `role: tool` message with a `tool_call_id`, and the preceding assistant message must contain the matching entry in `tool_calls` with the same `id`.
 
 ### Running
 
 ```
-npx promptfoo@latest eval -c examples/promptfoo/promptfooconfig.yaml
+npx promptfoo@latest eval -c examples/promptfoo/promptfooconfig.yaml --env-file .env
 ```
 
-Needs `ANTHROPIC_API_KEY` in the environment, and a Node.js version that the installed promptfoo supports. Run it once against the recorded tool definitions (expect a failure) and once after applying the diff to `tools.json` (expect a pass). Model output varies, so a single run is a sample, not a proof.
+`--env-file` loads the endpoint variables from the file and overrides the shell. Use a Node.js version that the installed promptfoo supports. Run it once against the recorded tool definitions (expect a failure) and once after applying the diff to `tools.json` (expect a pass). Model output varies, so a single run is a sample, not a proof.
