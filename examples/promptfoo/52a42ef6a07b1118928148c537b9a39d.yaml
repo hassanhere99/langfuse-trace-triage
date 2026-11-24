@@ -1,0 +1,21 @@
+- description: "52a42ef6a07b1118928148c537b9a39d: ambiguous 'undo my order' request should start with get_order_status, not a state-changing tool"
+  vars:
+    messages:
+      - role: system
+        content: "You are a customer support assistant for an online bookstore. Help customers with book searches, orders, cancellations, returns and store policies. Be concise and polite."
+      - role: user
+        content: "I want to undo my order BK-10234."
+  assert:
+    - type: javascript
+      value: |
+        const msg = typeof output === 'string' ? { content: output, tool_calls: [] }
+          : Array.isArray(output) ? { content: '', tool_calls: output } : output;
+        const calls = (msg.tool_calls || []).map((tc) => {
+          let input = {};
+          try { input = JSON.parse(tc.function.arguments || '{}'); } catch (e) { input = { _unparsed: tc.function.arguments }; }
+          return { name: tc.function.name, input };
+        });
+        const call = calls[0];
+        if (!call) return { pass: false, score: 0, reason: 'no tool call in output' };
+        const ok = call.name === 'get_order_status' && call.input.order_id === 'BK-10234';
+        return { pass: ok, score: ok ? 1 : 0, reason: JSON.stringify(calls) };

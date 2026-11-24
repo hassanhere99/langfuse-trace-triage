@@ -1,0 +1,48 @@
+- description: "2f3a8af0320782aaf84fbe2d7e5205c2: after start_return fails on a processing order, offer or call cancel_order instead of citing an invented policy"
+  vars:
+    messages:
+      - role: system
+        content: "You are a customer support assistant for an online bookstore. Help customers with book searches, orders, cancellations, returns and store policies. Be concise and polite."
+      - role: user
+        content: "I don't want the book in order BK-10571 anymore, please start a return."
+      - role: assistant
+        content: ""
+        tool_calls:
+          - id: call_6stwo17q
+            type: function
+            function:
+              name: start_return
+              arguments: '{"order_id":"BK-10571","reason":"The book is no longer wanted"}'
+      - role: tool
+        tool_call_id: call_6stwo17q
+        content: '{"error": "Order BK-10571 is not eligible for return because its status is processing."}'
+  assert:
+    - type: javascript
+      value: |
+        const msg = typeof output === 'string' ? { content: output, tool_calls: [] }
+          : Array.isArray(output) ? { content: '', tool_calls: output } : output;
+        const calls = (msg.tool_calls || []).map((tc) => {
+          let input = {};
+          try { input = JSON.parse(tc.function.arguments || '{}'); } catch (e) { input = { _unparsed: tc.function.arguments }; }
+          return { name: tc.function.name, input };
+        });
+        const text = msg.content || '';
+        // start_return was already rejected for this order; repeating it is not a recovery.
+        if (calls.some((c) => c.name === 'start_return')) {
+          return { pass: false, score: 0, reason: 'repeated start_return: ' + JSON.stringify(calls) };
+        }
+        // The returns policy says returns open after delivery only. "shipped or delivered" is not in it.
+        if (/shipped or delivered/i.test(text)) {
+          return { pass: false, score: 0, reason: 'states a return rule that is not in the store policy: ' + text };
+        }
+        // Correct recovery: an order that has not shipped is cancelled, not returned.
+        const cancel = calls.find((c) => c.name === 'cancel_order');
+        if (cancel) {
+          const ok = cancel.input.order_id === 'BK-10571';
+          return { pass: ok, score: ok ? 1 : 0, reason: JSON.stringify(cancel) };
+        }
+        const ok = /cancel/i.test(text);
+        return { pass: ok, score: ok ? 1 : 0, reason: ok ? 'offers cancellation' : 'does not offer cancellation: ' + text };
+    # LLM-graded
+    - type: llm-rubric
+      value: The reply either calls cancel_order for BK-10571 (a tool call counts) or tells the customer that the order has not shipped yet and can be cancelled for a refund. It does not send the customer to customer support instead, and it does not quote a store policy that was not looked up.

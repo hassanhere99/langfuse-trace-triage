@@ -1,0 +1,55 @@
+# Baseline (control) tests, not a failure reproduction: the trace shows a correct run.
+# They pass against the tool definitions as recorded and guard against regressions.
+- description: "ae32154e0914ea89e0cf8e77b1e72564: return-window question should call get_store_policy with topic returns"
+  vars:
+    messages:
+      - role: system
+        content: "You are a customer support assistant for an online bookstore. Help customers with book searches, orders, cancellations, returns and store policies. Be concise and polite."
+      - role: user
+        content: "How many days do I have to return a book?"
+  assert:
+    - type: javascript
+      value: |
+        const msg = typeof output === 'string' ? { content: output, tool_calls: [] }
+          : Array.isArray(output) ? { content: '', tool_calls: output } : output;
+        const calls = (msg.tool_calls || []).map((tc) => {
+          let input = {};
+          try { input = JSON.parse(tc.function.arguments || '{}'); } catch (e) { input = { _unparsed: tc.function.arguments }; }
+          return { name: tc.function.name, input };
+        });
+        const call = calls[0];
+        if (!call) return { pass: false, score: 0, reason: 'no tool call in output (answered from memory?)' };
+        const ok = call.name === 'get_store_policy' && call.input.topic === 'returns';
+        return { pass: ok, score: ok ? 1 : 0, reason: JSON.stringify(call) };
+
+- description: "ae32154e0914ea89e0cf8e77b1e72564: final answer should give the 30-day window from the policy"
+  vars:
+    messages:
+      - role: system
+        content: "You are a customer support assistant for an online bookstore. Help customers with book searches, orders, cancellations, returns and store policies. Be concise and polite."
+      - role: user
+        content: "How many days do I have to return a book?"
+      - role: assistant
+        content: ""
+        tool_calls:
+          - id: call_gpz2u8p8
+            type: function
+            function:
+              name: get_store_policy
+              arguments: '{"topic":"returns"}'
+      - role: tool
+        tool_call_id: call_gpz2u8p8
+        content: '{"topic": "returns", "policy": "Books can be returned within 30 days of delivery if they are in their original condition. Returns can only be started for orders that have been delivered. Refunds go to the original payment method within 5 to 7 business days after we receive the book."}'
+  assert:
+    - type: javascript
+      value: |
+        const msg = typeof output === 'string' ? { content: output, tool_calls: [] }
+          : Array.isArray(output) ? { content: '', tool_calls: output } : output;
+        const calls = (msg.tool_calls || []).map((tc) => {
+          let input = {};
+          try { input = JSON.parse(tc.function.arguments || '{}'); } catch (e) { input = { _unparsed: tc.function.arguments }; }
+          return { name: tc.function.name, input };
+        });
+        const text = msg.content || '';
+        const ok = calls.length === 0 && /\b30\s*days\b/i.test(text);
+        return { pass: ok, score: ok ? 1 : 0, reason: ok ? 'answer matches the policy' : JSON.stringify({ calls, text }) };

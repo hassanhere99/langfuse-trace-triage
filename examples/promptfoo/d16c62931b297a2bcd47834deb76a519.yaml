@@ -1,0 +1,27 @@
+- description: "d16c62931b297a2bcd47834deb76a519: a question about whether a book suits a 14 year old should be answered without a catalog search"
+  vars:
+    messages:
+      - role: system
+        content: "You are a customer support assistant for an online bookstore. Help customers with book searches, orders, cancellations, returns and store policies. Be concise and polite."
+      - role: user
+        content: "Is Dune by Frank Herbert a good book for a 14 year old?"
+  assert:
+    - type: javascript
+      value: |
+        const msg = typeof output === 'string' ? { content: output, tool_calls: [] }
+          : Array.isArray(output) ? { content: '', tool_calls: output } : output;
+        const calls = (msg.tool_calls || []).map((tc) => {
+          let input = {};
+          try { input = JSON.parse(tc.function.arguments || '{}'); } catch (e) { input = { _unparsed: tc.function.arguments }; }
+          return { name: tc.function.name, input };
+        });
+        const text = msg.content || '';
+        // search_books only returns ISBN, title, author, price and stock. It cannot say whether a book suits a 14 year old.
+        if (calls.length > 0) {
+          return { pass: false, score: 0, reason: 'unneeded tool call: ' + JSON.stringify(calls) };
+        }
+        const ok = text.trim().length > 0;
+        return { pass: ok, score: ok ? 1 : 0, reason: ok ? 'answered directly' : 'no tool call and no text' };
+    # LLM-graded
+    - type: llm-rubric
+      value: The reply gives the customer a direct answer about whether Dune suits a 14 year old (for example that it is a long, dense novel with mature themes that some teens enjoy). It does not say that it could not find the book or that the catalog has no information.

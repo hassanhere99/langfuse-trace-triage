@@ -1,0 +1,57 @@
+# Baseline (control) tests, not a failure reproduction: the trace shows a correct run.
+# They pass against the tool definitions as recorded and guard against regressions.
+- description: "361515fd899d5188fe2010adc2d56d40: shipping question should call get_store_policy with topic shipping"
+  vars:
+    messages:
+      - role: system
+        content: "You are a customer support assistant for an online bookstore. Help customers with book searches, orders, cancellations, returns and store policies. Be concise and polite."
+      - role: user
+        content: "How long does standard shipping take and what does it cost?"
+  assert:
+    - type: javascript
+      value: |
+        const msg = typeof output === 'string' ? { content: output, tool_calls: [] }
+          : Array.isArray(output) ? { content: '', tool_calls: output } : output;
+        const calls = (msg.tool_calls || []).map((tc) => {
+          let input = {};
+          try { input = JSON.parse(tc.function.arguments || '{}'); } catch (e) { input = { _unparsed: tc.function.arguments }; }
+          return { name: tc.function.name, input };
+        });
+        const call = calls[0];
+        if (!call) return { pass: false, score: 0, reason: 'no tool call in output' };
+        const ok = call.name === 'get_store_policy' && call.input.topic === 'shipping';
+        return { pass: ok, score: ok ? 1 : 0, reason: JSON.stringify(call) };
+
+- description: "361515fd899d5188fe2010adc2d56d40: final answer should report the shipping time and cost from the policy"
+  vars:
+    messages:
+      - role: system
+        content: "You are a customer support assistant for an online bookstore. Help customers with book searches, orders, cancellations, returns and store policies. Be concise and polite."
+      - role: user
+        content: "How long does standard shipping take and what does it cost?"
+      - role: assistant
+        content: ""
+        tool_calls:
+          - id: call_xpz9dq8z
+            type: function
+            function:
+              name: get_store_policy
+              arguments: '{"topic":"shipping"}'
+      - role: tool
+        tool_call_id: call_xpz9dq8z
+        content: '{"topic": "shipping", "policy": "Standard shipping takes 3 to 5 business days and costs $4.50. Orders over $35 ship free. Express shipping takes 1 to 2 business days and costs $12.00. We ship within the United States only."}'
+  assert:
+    - type: javascript
+      value: |
+        const msg = typeof output === 'string' ? { content: output, tool_calls: [] }
+          : Array.isArray(output) ? { content: '', tool_calls: output } : output;
+        const calls = (msg.tool_calls || []).map((tc) => {
+          let input = {};
+          try { input = JSON.parse(tc.function.arguments || '{}'); } catch (e) { input = { _unparsed: tc.function.arguments }; }
+          return { name: tc.function.name, input };
+        });
+        const text = msg.content || '';
+        const ok = calls.length === 0
+          && /3\s*(to|-)\s*5 business days/i.test(text)
+          && text.includes('$4.50');
+        return { pass: ok, score: ok ? 1 : 0, reason: ok ? 'answer matches the policy' : JSON.stringify({ calls, text }) };

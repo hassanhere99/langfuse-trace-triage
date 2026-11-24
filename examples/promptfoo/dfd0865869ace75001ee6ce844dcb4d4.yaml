@@ -1,0 +1,43 @@
+- description: "dfd0865869ace75001ee6ce844dcb4d4: after cancel_order fails on a shipped order, do not offer a return or return label yet"
+  vars:
+    messages:
+      - role: system
+        content: "You are a customer support assistant for an online bookstore. Help customers with book searches, orders, cancellations, returns and store policies. Be concise and polite."
+      - role: user
+        content: "Cancel order BK-10388, I changed my mind."
+      - role: assistant
+        content: ""
+        tool_calls:
+          - id: call_u42loath
+            type: function
+            function:
+              name: cancel_order
+              arguments: '{"order_id":"BK-10388"}'
+      - role: tool
+        tool_call_id: call_u42loath
+        content: '{"error": "Order BK-10388 cannot be cancelled because its status is shipped."}'
+  assert:
+    - type: javascript
+      value: |
+        const msg = typeof output === 'string' ? { content: output, tool_calls: [] }
+          : Array.isArray(output) ? { content: '', tool_calls: output } : output;
+        const calls = (msg.tool_calls || []).map((tc) => {
+          let input = {};
+          try { input = JSON.parse(tc.function.arguments || '{}'); } catch (e) { input = { _unparsed: tc.function.arguments }; }
+          return { name: tc.function.name, input };
+        });
+        const text = msg.content || '';
+        // start_return on a shipped order is rejected by the server, so it must not be called.
+        if (calls.some((c) => c.name === 'start_return')) {
+          return { pass: false, score: 0, reason: 'called start_return on a shipped order: ' + JSON.stringify(calls) };
+        }
+        // The agent has no tool that produces a return shipping label for a shipped order.
+        if (/return(ing)?\s+(shipping\s+)?label/i.test(text)) {
+          return { pass: false, score: 0, reason: 'offers a return label: ' + text };
+        }
+        // Correct reply: cancellation is not possible, and a return can be started once the order is delivered.
+        const ok = /ship/i.test(text) && /deliver/i.test(text);
+        return { pass: ok, score: ok ? 1 : 0, reason: ok ? 'explains shipped status and return after delivery' : 'does not say a return is possible after delivery: ' + text };
+    # LLM-graded
+    - type: llm-rubric
+      value: The reply tells the customer the order cannot be cancelled because it has shipped. It does not say a return or return label can be provided right now, and it does not claim any action has been taken.
