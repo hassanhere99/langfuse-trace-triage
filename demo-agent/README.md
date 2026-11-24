@@ -80,7 +80,7 @@ Langfuse ingests asynchronously, so run the export a minute after the demo:
 .venv/bin/python demo-agent/export_traces.py TRACE_ID ...    # specific traces
 ```
 
-Each trace is fetched with `skills/langfuse-trace-triage/scripts/fetch_trace.py`, retried until it has the `expected_tool_check` score and a stable observation count, then written to `examples/traces/<scenario_id>.json`. The export removes `projectId`, `htmlPath`, `userId`, `release`, `version`, score author ids, any `*url` field, and `metadata.resourceAttributes`. Read the files before committing them. The script cannot know what else your project puts in a trace.
+Each trace is fetched with `skills/langfuse-trace-triage/scripts/fetch_trace.py`, retried until it has the `expected_tool_check` score and a stable observation count, then written to `examples/traces/<scenario_id>.json`. The export removes `projectId`, `htmlPath`, `userId`, `release`, `version`, score author ids, any `*url` field, and the metadata the SDK adds (`resourceAttributes.*` and `scope.*`, which includes the Langfuse public key). It then refuses to write a file that still contains a string with `pk-lf-`, `sk-lf-` or the project ID. Read the files before committing them. The script cannot know what else your project puts in a trace.
 
 ## Trace layout
 

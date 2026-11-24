@@ -19,3 +19,6 @@ promptfoo-results*
 # OS / local
 .DS_Store
 .context/
+
+# Demo run output (trace ids of the last local run)
+demo-agent/last_run.json

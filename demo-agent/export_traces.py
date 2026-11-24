@@ -22,7 +22,14 @@ ROOT = HERE.parent
 sys.path.insert(0, str(ROOT / "skills" / "langfuse-trace-triage" / "scripts"))
 
 STRIP_KEYS = {"projectId", "htmlPath", "userId", "authorUserId", "createdByUserId", "release", "version"}
-STRIP_METADATA_KEYS = {"resourceAttributes"}
+# Metadata added by the SDK and OpenTelemetry. The v2 observations API returns it flattened
+# ("scope.attributes.public_key", "resourceAttributes.service.instance.id"), older APIs nested.
+STRIP_METADATA_PREFIXES = ("resourceAttributes", "scope")
+SECRET_MARKERS = ("pk-lf-", "sk-lf-")
+
+
+def _is_sdk_metadata_key(key):
+    return any(key == p or key.startswith(p + ".") for p in STRIP_METADATA_PREFIXES)
 
 
 def strip_account_fields(obj, in_metadata=False):
@@ -32,7 +39,7 @@ def strip_account_fields(obj, in_metadata=False):
         for k, v in obj.items():
             if k in STRIP_KEYS and not in_metadata:
                 continue
-            if in_metadata and k in STRIP_METADATA_KEYS:
+            if in_metadata and _is_sdk_metadata_key(k):
                 continue
             if isinstance(v, str) and k.lower().endswith("url") and v.startswith("http"):
                 continue
@@ -41,6 +48,25 @@ def strip_account_fields(obj, in_metadata=False):
     if isinstance(obj, list):
         return [strip_account_fields(v, in_metadata) for v in obj]
     return obj
+
+
+def find_leaks(obj, project_id=None):
+    """Return paths of string values that still look account-specific (keys, project id)."""
+    leaks = []
+
+    def walk(o, path):
+        if isinstance(o, dict):
+            for k, v in o.items():
+                walk(v, f"{path}.{k}")
+        elif isinstance(o, list):
+            for i, v in enumerate(o):
+                walk(v, f"{path}[{i}]")
+        elif isinstance(o, str):
+            if any(m in o for m in SECRET_MARKERS) or (project_id and project_id in o):
+                leaks.append(path)
+
+    walk(obj, "")
+    return leaks
 
 
 def has_check_score(trace):
@@ -122,7 +148,15 @@ def main():
             failed += 1
             continue
         scenario = names.get(tid) or (trace.get("metadata") or {}).get("scenario_id") or tid
+        project_ids = {s.get("projectId") for s in trace.get("scores") or [] if s.get("projectId")}
+        project_ids |= {o.get("projectId") for o in trace.get("observations") or [] if o.get("projectId")}
         clean = strip_account_fields(trace)
+        leaks = [p for pid in (project_ids or {None}) for p in find_leaks(clean, pid)]
+        if leaks:
+            print(f"  not writing {scenario}: account-specific values left at {', '.join(sorted(set(leaks))[:5])}",
+                  file=sys.stderr)
+            failed += 1
+            continue
         path = out_dir / f"{scenario}.json"
         path.write_text(json.dumps(clean, indent=2, ensure_ascii=False) + "\n")
         print(f"  wrote {path}")
