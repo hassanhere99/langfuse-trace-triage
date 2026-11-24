@@ -188,7 +188,7 @@ The reports are written for the trace ids in `last_run.json`, so delete the old 
 npx promptfoo@latest eval -c examples/promptfoo/promptfooconfig.yaml --env-file .env
 ```
 
-With Ollama this needs no paid key. The tests run against the same endpoint and model as the agent, read from `OPENAI_BASE_URL`, `OPENAI_API_KEY` and `DEMO_MODEL`. The latest promptfoo needs a recent Node. Version 0.126.0 ran on Node 26.13.1. If `node --version` is too old, run `nvm install --lts` and then `nvm exec 26 npx promptfoo@latest ...`. You can set `PROMPTFOO_DISABLE_TELEMETRY=1`.
+With Ollama this needs no paid key. The tests run against the same endpoint and model as the agent, read from `OPENAI_BASE_URL`, `OPENAI_API_KEY` and `DEMO_MODEL`. The latest promptfoo needs a recent Node. Version 0.126.0 ran on Node 26.13.1. If `node --version` is too old, run `nvm install --lts` and then `nvm exec 26 npx promptfoo@latest ...`. You can set `PROMPTFOO_DISABLE_TELEMETRY=1`. promptfoo exits with code 100 when any test fails.
 
 Result of the recorded run (`llama3.2:3b`, temperature 0, 1 minute 34 seconds): 10 tests, 5 passed, 5 failed, 0 errors. The 10 tests come from 8 traces, because two traces have two tests each. The 5 failures are the tests for the 5 failing traces (`undo_delivered_order`, `cancel_bare_number`, `cancel_shipped_order`, `return_processing_order`, `unneeded_lookup`). They are meant to fail against the tool definitions as recorded in `tools.json`. The 5 passes are the tests for the runs that worked. The run after applying the suggested fixes to `tools.json` was not done, so it is not shown that the fixes make the failing tests pass.
 
