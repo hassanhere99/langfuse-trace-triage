@@ -117,30 +117,82 @@ Definitions, evidence to look for and usual fix locations are in [skills/langfus
 
 ## Running the demo agent
 
-`demo-agent/` is a customer support agent for an online bookstore, with five tools over fake in-memory data. Two tool descriptions overlap on purpose and one argument is underspecified, so some scenarios fail. It uses the Anthropic API and sends traces to Langfuse. Details are in [demo-agent/README.md](demo-agent/README.md).
+`demo-agent/` is a customer support agent for an online bookstore, with five tools over fake in-memory data. Two tool descriptions overlap on purpose and one argument is underspecified, so some scenarios fail. It talks to any OpenAI-compatible chat completions endpoint with tool calling and sends traces to Langfuse. Details are in [demo-agent/README.md](demo-agent/README.md).
 
-Copy `.env.example` to `.env` at the repo root and fill in `ANTHROPIC_API_KEY`, `LANGFUSE_PUBLIC_KEY`, `LANGFUSE_SECRET_KEY` (and `LANGFUSE_HOST` if not the EU cloud). Set `DEMO_MODEL` to an Anthropic model ID, for example `claude-haiku-5-5`. Values in `.env` override the shell.
+### Setup
+
+Copy `.env.example` to `.env` at the repo root. Set the Langfuse keys and host (`LANGFUSE_PUBLIC_KEY`, `LANGFUSE_SECRET_KEY`, `LANGFUSE_HOST`; the default is the EU cloud, the US cloud is `https://us.cloud.langfuse.com`). Then point the agent at a model endpoint with `OPENAI_BASE_URL`, `OPENAI_API_KEY` and `DEMO_MODEL`.
+
+Ollama is the tested default. It needs no paid key:
+
+```
+ollama serve
+ollama pull llama3.2:3b
+```
+
+Install Ollama from [ollama.com](https://ollama.com). The `.env.example` block for Ollama is `OPENAI_BASE_URL=http://localhost:11434/v1`, `OPENAI_API_KEY=ollama` and `DEMO_MODEL=llama3.2:3b`. `.env.example` also has DeepSeek and OpenAI blocks. They are documented but untested.
+
+Langfuse settings are read only from `.env`. `LANGFUSE_*` variables exported in your shell are ignored, so keys for another project cannot leak into the demo. Check which project the keys belong to, and that the model endpoint works:
 
 ```
 uv venv .venv
 uv pip install -r demo-agent/requirements.txt    # or: python3 -m venv .venv && .venv/bin/pip install -r demo-agent/requirements.txt
+python3 demo-agent/check_langfuse_project.py
+.venv/bin/python demo-agent/check_model.py
+```
+
+`check_langfuse_project.py` prints the host, project name and project ID. `check_model.py` sends one request that should produce a tool call. With `llama3.2:3b` it called `get_order_status` and took 15 seconds on the first request.
+
+If a script fails with a certificate error on a python.org build of Python, set `SSL_CERT_FILE` to your CA bundle, for example `SSL_CERT_FILE=/etc/ssl/cert.pem` on macOS.
+
+Instead of calling `.venv/bin/python`, you can run `source .venv/bin/activate` first and use `python`.
+
+### Running it
+
+```
 .venv/bin/python demo-agent/run_demo.py
 .venv/bin/python demo-agent/export_traces.py
 ```
 
-Instead of calling `.venv/bin/python`, you can run `source .venv/bin/activate` first and use `python`.
+`run_demo.py` runs eight fixed messages and attaches a score named `expected_tool_check` to each trace. That score is an automated check by `run_demo.py` (did the first tool called match the expected one, by name only). It is not user feedback. It sends eight new traces to the Langfuse project in `.env`. With `llama3.2:3b` on CPU it took about two minutes. `export_traces.py` fetches the traces and writes stripped copies to `examples/traces/`; read them before committing.
 
-`run_demo.py` runs eight fixed messages and attaches a score named `expected_tool_check` to each trace. That score is an automated check by `run_demo.py` (did the first tool called match the expected one, by name only). It is not user feedback. `export_traces.py` fetches the traces and writes stripped copies to `examples/traces/`; read them before committing.
+### Regenerating the examples
 
-`run_demo.py` has not been run yet, so `examples/traces/` and `examples/reports/` do not exist. Running the demo and exporting traces needs the keys above.
+Do this after changing the model or the tools. In order:
 
-Promptfoo test cases: `examples/promptfoo/tools.json` (the demo agent's tool definitions) exists. `examples/promptfoo/promptfooconfig.yaml` is generated together with the example traces and reports and does not exist yet. Once it does, run:
+1. `.venv/bin/python demo-agent/run_demo.py` runs the scenarios and writes the trace ids to `demo-agent/last_run.json`.
+2. `.venv/bin/python demo-agent/export_traces.py` writes `examples/traces/<scenario>.json`. Wait a minute after step 1, because Langfuse ingests asynchronously.
+3. Run the skill once per trace with `claude -p`, from the repo root. For `<scenario>`, use each file name in `examples/traces/`:
 
 ```
-npx promptfoo@latest eval -c examples/promptfoo/promptfooconfig.yaml
+claude -p "Use the langfuse-trace-triage skill to triage the exported trace at examples/traces/<scenario>.json.
+Save the report in examples/reports/ and the promptfoo test case in examples/promptfoo/.
+The agent that produced this trace ran against an OpenAI-compatible endpoint configured by the OPENAI_BASE_URL, OPENAI_API_KEY and DEMO_MODEL environment variables." \
+  --plugin-dir . \
+  --strict-mcp-config --mcp-config '{"mcpServers":{}}' \
+  --permission-mode dontAsk \
+  --allowedTools "Skill" "Read" "Glob" "Grep" \
+     "Edit(./examples/reports/**)" "Edit(./examples/promptfoo/**)" \
+     "Write(./examples/reports/**)" "Write(./examples/promptfoo/**)" \
+     "Bash(python3 skills/langfuse-trace-triage/scripts/*)" \
+  --model claude-sonnet-5-5
 ```
 
-This needs `ANTHROPIC_API_KEY`, and the latest promptfoo needs Node 22.22 or later.
+`--strict-mcp-config` with an empty MCP config keeps other MCP servers out of the run. Each run took about 40 seconds to 2 minutes and 15 to 19 turns. The skill writes `examples/reports/<trace_id>.md`, `examples/promptfoo/<trace_id>.yaml`, and adds the test to `examples/promptfoo/promptfooconfig.yaml`.
+
+The reports are written for the trace ids in `last_run.json`, so delete the old reports and tests first, or they will sit next to the new ones.
+
+### promptfoo tests
+
+```
+npx promptfoo@latest eval -c examples/promptfoo/promptfooconfig.yaml --env-file .env
+```
+
+With Ollama this needs no paid key. The tests run against the same endpoint and model as the agent, read from `OPENAI_BASE_URL`, `OPENAI_API_KEY` and `DEMO_MODEL`. The latest promptfoo needs a recent Node. Version 0.126.0 ran on Node 26.13.1. If `node --version` is too old, run `nvm install --lts` and then `nvm exec 26 npx promptfoo@latest ...`. You can set `PROMPTFOO_DISABLE_TELEMETRY=1`.
+
+Result of the recorded run (`llama3.2:3b`, temperature 0, 1 minute 34 seconds): 10 tests, 5 passed, 5 failed, 0 errors. The 10 tests come from 8 traces, because two traces have two tests each. The 5 failures are the tests for the 5 failing traces (`undo_delivered_order`, `cancel_bare_number`, `cancel_shipped_order`, `return_processing_order`, `unneeded_lookup`). They are meant to fail against the tool definitions as recorded in `tools.json`. The 5 passes are the tests for the runs that worked. The run after applying the suggested fixes to `tools.json` was not done, so it is not shown that the fixes make the failing tests pass.
+
+The `llm-rubric` assertions are graded by the same 3B model, and the grading looked unreliable in this run. For `cancel_shipped_order` the grader's reason read as if the reply met the rubric while the assertion failed. Treat the deterministic `javascript` assertions as the result.
 
 ## Running the tests
 
@@ -152,7 +204,7 @@ uv pip install -r requirements.txt    # or: python3 -m venv .venv && .venv/bin/p
 
 Instead of calling `.venv/bin/python`, you can run `source .venv/bin/activate` first and use `python`.
 
-The tests cover `summarize_trace.py` and `fetch_trace.py` using fixtures in `tests/fixtures/`. They need no network access or API keys. Current result: 25 passed, 1 skipped. The skipped test checks the traces in `examples/traces/`, which do not exist yet.
+The tests cover `summarize_trace.py` and `fetch_trace.py` using fixtures in `tests/fixtures/`. They need no network access or API keys. Current result: 34 passed, 0 skipped. This includes tests that check the traces in `examples/traces/`.
 
 ## Limitations
 
