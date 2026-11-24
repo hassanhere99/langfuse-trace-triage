@@ -11,6 +11,7 @@ The tools are flawed on purpose. Some scenarios fail, and the traces from those 
 - `run_demo.py`: runs the fixed scenarios, scores each trace, writes `last_run.json`.
 - `export_traces.py`: fetches the traces and writes stripped copies to `examples/traces/`.
 - `check_langfuse_project.py`: prints the Langfuse host, project name and project ID that the keys in `.env` belong to. It never prints the keys.
+- `check_model.py`: sends one tool-calling request to the endpoint in `.env` and checks the reply. It sends nothing to Langfuse.
 - `repo_env.py`: loads the repo-root `.env` for the scripts above (see Environment variables).
 - `../examples/promptfoo/tools.json`: the tool definitions as JSON, for the promptfoo test cases. Regenerate with `python demo-agent/tools.py --dump-tools > examples/promptfoo/tools.json`.
 
@@ -34,7 +35,7 @@ The store policy text (from `get_store_policy`) does state the real rules, so a 
 | return_processing_order | start a return on BK-10571 (processing) | start_return | the tool errors because the order has not shipped |
 | unneeded_lookup | "is Dune a good book for a 14 year old" | none | the model may call `search_books` when no tool is needed |
 
-These are designs, not results. What a given model actually does is in the exported traces.
+These are designs, not results. What a given model actually does is in the exported traces. For what `llama3.2:3b` did, see the Example section of the [main README](../README.md#example).
 
 ## Environment variables
 
@@ -63,7 +64,8 @@ Any endpoint that serves chat completions with tool calling works. For DeepSeek,
 
 ```
 uv venv .venv
-uv pip install -r demo-agent/requirements.txt
+uv pip install -r demo-agent/requirements.txt    # or: python3 -m venv .venv && .venv/bin/pip install -r demo-agent/requirements.txt
+.venv/bin/python demo-agent/check_model.py
 .venv/bin/python demo-agent/run_demo.py
 ```
 
