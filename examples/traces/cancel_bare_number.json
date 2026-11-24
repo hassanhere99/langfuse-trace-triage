@@ -1,0 +1,506 @@
+{
+  "id": "4e30ecd2dd0cd2465c2fafac242f5a8c",
+  "timestamp": "2026-11-24T12:55:10.854Z",
+  "name": "bookstore-support",
+  "input": "Please cancel order 10571.",
+  "output": "I apologize for the inconvenience, but I couldn't locate order 10571 in our system. Could you please provide the correct order number or confirm if you would like to cancel your current order?",
+  "metadata": {
+    "scenario_id": "cancel_bare_number"
+  },
+  "tags": [],
+  "sessionId": null,
+  "environment": "default",
+  "observations": [
+    {
+      "id": "d25bed83a82073ee",
+      "traceId": "4e30ecd2dd0cd2465c2fafac242f5a8c",
+      "startTime": "2026-11-24T12:55:10.854Z",
+      "endTime": "2026-11-24T12:55:18.350Z",
+      "parentObservationId": null,
+      "type": "SPAN",
+      "name": "agent-run",
+      "level": "DEFAULT",
+      "statusMessage": "",
+      "environment": "default",
+      "completionStartTime": null,
+      "createdAt": "2026-11-24T12:55:19.018Z",
+      "updatedAt": "2026-11-24T12:55:19.018Z",
+      "input": "Please cancel order 10571.",
+      "output": "I apologize for the inconvenience, but I couldn't locate order 10571 in our system. Could you please provide the correct order number or confirm if you would like to cancel your current order?",
+      "metadata": {
+        "scenario_id": "cancel_bare_number"
+      },
+      "model": "",
+      "internalModelId": "",
+      "modelParameters": {},
+      "usageDetails": {},
+      "inputUsage": 0,
+      "outputUsage": 0,
+      "totalUsage": 0,
+      "costDetails": {},
+      "inputCost": null,
+      "outputCost": null,
+      "totalCost": null,
+      "usagePricingTierId": null,
+      "usagePricingTierName": null,
+      "latency": 7.496,
+      "timeToFirstToken": null,
+      "sessionId": "",
+      "isRootObservation": true,
+      "traceName": "bookstore-support",
+      "tags": [],
+      "bookmarked": false,
+      "public": false,
+      "modelId": null,
+      "inputPrice": null,
+      "outputPrice": null,
+      "totalPrice": null
+    },
+    {
+      "id": "b581fcccdb7a74b5",
+      "traceId": "4e30ecd2dd0cd2465c2fafac242f5a8c",
+      "startTime": "2026-11-24T12:55:10.854Z",
+      "endTime": "2026-11-24T12:55:12.905Z",
+      "parentObservationId": "d25bed83a82073ee",
+      "type": "GENERATION",
+      "name": "llm-call-1",
+      "level": "DEFAULT",
+      "statusMessage": "",
+      "environment": "default",
+      "completionStartTime": null,
+      "createdAt": "2026-11-24T12:55:13.645Z",
+      "updatedAt": "2026-11-24T12:55:13.645Z",
+      "input": {
+        "messages": [
+          {
+            "role": "system",
+            "content": "You are a customer support assistant for an online bookstore. Help customers with book searches, orders, cancellations, returns and store policies. Be concise and polite."
+          },
+          {
+            "role": "user",
+            "content": "Please cancel order 10571."
+          }
+        ],
+        "tools": [
+          {
+            "type": "function",
+            "function": {
+              "name": "search_books",
+              "description": "Search the bookstore catalog by title, author or ISBN. Returns up to five matching books with ISBN, title, author, price in USD and the number of copies in stock.",
+              "parameters": {
+                "type": "object",
+                "properties": {
+                  "query": {
+                    "type": "string",
+                    "description": "A title, author name or ISBN to search for."
+                  }
+                },
+                "required": [
+                  "query"
+                ]
+              }
+            }
+          },
+          {
+            "type": "function",
+            "function": {
+              "name": "get_order_status",
+              "description": "Look up an order and return its status, items and key dates.",
+              "parameters": {
+                "type": "object",
+                "properties": {
+                  "order_id": {
+                    "type": "string",
+                    "description": "The order ID"
+                  }
+                },
+                "required": [
+                  "order_id"
+                ]
+              }
+            }
+          },
+          {
+            "type": "function",
+            "function": {
+              "name": "cancel_order",
+              "description": "Undo an order. Use this when the customer wants to reverse or back out of an order they placed.",
+              "parameters": {
+                "type": "object",
+                "properties": {
+                  "order_id": {
+                    "type": "string",
+                    "description": "The order ID"
+                  }
+                },
+                "required": [
+                  "order_id"
+                ]
+              }
+            }
+          },
+          {
+            "type": "function",
+            "function": {
+              "name": "start_return",
+              "description": "Reverse an order. Use this when the customer wants to undo a purchase and get their money back.",
+              "parameters": {
+                "type": "object",
+                "properties": {
+                  "order_id": {
+                    "type": "string",
+                    "description": "The order ID"
+                  },
+                  "reason": {
+                    "type": "string",
+                    "description": "Why the customer wants to return the order."
+                  }
+                },
+                "required": [
+                  "order_id"
+                ]
+              }
+            }
+          },
+          {
+            "type": "function",
+            "function": {
+              "name": "get_store_policy",
+              "description": "Return the official store policy text for one topic: returns, shipping or cancellations. Use it for questions about how the store's rules work rather than about a specific order.",
+              "parameters": {
+                "type": "object",
+                "properties": {
+                  "topic": {
+                    "type": "string",
+                    "enum": [
+                      "returns",
+                      "shipping",
+                      "cancellations"
+                    ],
+                    "description": "The policy topic to look up."
+                  }
+                },
+                "required": [
+                  "topic"
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "output": {
+        "role": "assistant",
+        "content": "",
+        "tool_calls": [
+          {
+            "id": "call_ouc00q1s",
+            "type": "function",
+            "function": {
+              "name": "cancel_order",
+              "arguments": "{\"order_id\":\"10571\"}"
+            }
+          }
+        ]
+      },
+      "metadata": {
+        "scenario_id": "cancel_bare_number",
+        "finish_reason": "tool_calls"
+      },
+      "model": "llama3.2:3b",
+      "internalModelId": "",
+      "modelParameters": {
+        "temperature": 0,
+        "max_tokens": 4096
+      },
+      "usageDetails": {
+        "input": 519,
+        "output": 15,
+        "total": 534
+      },
+      "inputUsage": 519,
+      "outputUsage": 15,
+      "totalUsage": 534,
+      "costDetails": {},
+      "inputCost": null,
+      "outputCost": null,
+      "totalCost": null,
+      "usagePricingTierId": null,
+      "usagePricingTierName": null,
+      "latency": 2.051,
+      "timeToFirstToken": null,
+      "sessionId": "",
+      "isRootObservation": false,
+      "traceName": "bookstore-support",
+      "tags": [],
+      "bookmarked": false,
+      "public": false,
+      "modelId": null,
+      "inputPrice": null,
+      "outputPrice": null,
+      "totalPrice": null
+    },
+    {
+      "id": "4b976918133fbb53",
+      "traceId": "4e30ecd2dd0cd2465c2fafac242f5a8c",
+      "startTime": "2026-11-24T12:55:12.906Z",
+      "endTime": "2026-11-24T12:55:12.906Z",
+      "parentObservationId": "d25bed83a82073ee",
+      "type": "TOOL",
+      "name": "tool:cancel_order",
+      "level": "ERROR",
+      "statusMessage": "Invalid order_id: \"10571\"",
+      "environment": "default",
+      "completionStartTime": null,
+      "createdAt": "2026-11-24T12:55:13.645Z",
+      "updatedAt": "2026-11-24T12:55:13.645Z",
+      "input": {
+        "order_id": "10571"
+      },
+      "output": {
+        "error": "Invalid order_id: \"10571\""
+      },
+      "metadata": {
+        "scenario_id": "cancel_bare_number"
+      },
+      "model": "",
+      "internalModelId": "",
+      "modelParameters": {},
+      "usageDetails": {},
+      "inputUsage": 0,
+      "outputUsage": 0,
+      "totalUsage": 0,
+      "costDetails": {},
+      "inputCost": null,
+      "outputCost": null,
+      "totalCost": null,
+      "usagePricingTierId": null,
+      "usagePricingTierName": null,
+      "latency": 0,
+      "timeToFirstToken": null,
+      "sessionId": "",
+      "isRootObservation": false,
+      "traceName": "bookstore-support",
+      "tags": [],
+      "bookmarked": false,
+      "public": false,
+      "modelId": null,
+      "inputPrice": null,
+      "outputPrice": null,
+      "totalPrice": null
+    },
+    {
+      "id": "235f32b1ea8aa82e",
+      "traceId": "4e30ecd2dd0cd2465c2fafac242f5a8c",
+      "startTime": "2026-11-24T12:55:12.906Z",
+      "endTime": "2026-11-24T12:55:18.350Z",
+      "parentObservationId": "d25bed83a82073ee",
+      "type": "GENERATION",
+      "name": "llm-call-2",
+      "level": "DEFAULT",
+      "statusMessage": "",
+      "environment": "default",
+      "completionStartTime": null,
+      "createdAt": "2026-11-24T12:55:19.018Z",
+      "updatedAt": "2026-11-24T12:55:19.018Z",
+      "input": {
+        "messages": [
+          {
+            "role": "system",
+            "content": "You are a customer support assistant for an online bookstore. Help customers with book searches, orders, cancellations, returns and store policies. Be concise and polite."
+          },
+          {
+            "role": "user",
+            "content": "Please cancel order 10571."
+          },
+          {
+            "role": "assistant",
+            "content": "",
+            "tool_calls": [
+              {
+                "id": "call_ouc00q1s",
+                "type": "function",
+                "function": {
+                  "name": "cancel_order",
+                  "arguments": "{\"order_id\":\"10571\"}"
+                }
+              }
+            ]
+          },
+          {
+            "role": "tool",
+            "tool_call_id": "call_ouc00q1s",
+            "content": "{\"error\": \"Invalid order_id: \\\"10571\\\"\"}"
+          }
+        ],
+        "tools": [
+          {
+            "type": "function",
+            "function": {
+              "name": "search_books",
+              "description": "Search the bookstore catalog by title, author or ISBN. Returns up to five matching books with ISBN, title, author, price in USD and the number of copies in stock.",
+              "parameters": {
+                "type": "object",
+                "properties": {
+                  "query": {
+                    "type": "string",
+                    "description": "A title, author name or ISBN to search for."
+                  }
+                },
+                "required": [
+                  "query"
+                ]
+              }
+            }
+          },
+          {
+            "type": "function",
+            "function": {
+              "name": "get_order_status",
+              "description": "Look up an order and return its status, items and key dates.",
+              "parameters": {
+                "type": "object",
+                "properties": {
+                  "order_id": {
+                    "type": "string",
+                    "description": "The order ID"
+                  }
+                },
+                "required": [
+                  "order_id"
+                ]
+              }
+            }
+          },
+          {
+            "type": "function",
+            "function": {
+              "name": "cancel_order",
+              "description": "Undo an order. Use this when the customer wants to reverse or back out of an order they placed.",
+              "parameters": {
+                "type": "object",
+                "properties": {
+                  "order_id": {
+                    "type": "string",
+                    "description": "The order ID"
+                  }
+                },
+                "required": [
+                  "order_id"
+                ]
+              }
+            }
+          },
+          {
+            "type": "function",
+            "function": {
+              "name": "start_return",
+              "description": "Reverse an order. Use this when the customer wants to undo a purchase and get their money back.",
+              "parameters": {
+                "type": "object",
+                "properties": {
+                  "order_id": {
+                    "type": "string",
+                    "description": "The order ID"
+                  },
+                  "reason": {
+                    "type": "string",
+                    "description": "Why the customer wants to return the order."
+                  }
+                },
+                "required": [
+                  "order_id"
+                ]
+              }
+            }
+          },
+          {
+            "type": "function",
+            "function": {
+              "name": "get_store_policy",
+              "description": "Return the official store policy text for one topic: returns, shipping or cancellations. Use it for questions about how the store's rules work rather than about a specific order.",
+              "parameters": {
+                "type": "object",
+                "properties": {
+                  "topic": {
+                    "type": "string",
+                    "enum": [
+                      "returns",
+                      "shipping",
+                      "cancellations"
+                    ],
+                    "description": "The policy topic to look up."
+                  }
+                },
+                "required": [
+                  "topic"
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "output": {
+        "role": "assistant",
+        "content": "I apologize for the inconvenience, but I couldn't locate order 10571 in our system. Could you please provide the correct order number or confirm if you would like to cancel your current order?"
+      },
+      "metadata": {
+        "scenario_id": "cancel_bare_number",
+        "finish_reason": "stop"
+      },
+      "model": "llama3.2:3b",
+      "internalModelId": "",
+      "modelParameters": {
+        "temperature": 0,
+        "max_tokens": 4096
+      },
+      "usageDetails": {
+        "input": 136,
+        "output": 40,
+        "total": 176
+      },
+      "inputUsage": 136,
+      "outputUsage": 40,
+      "totalUsage": 176,
+      "costDetails": {},
+      "inputCost": null,
+      "outputCost": null,
+      "totalCost": null,
+      "usagePricingTierId": null,
+      "usagePricingTierName": null,
+      "latency": 5.444,
+      "timeToFirstToken": null,
+      "sessionId": "",
+      "isRootObservation": false,
+      "traceName": "bookstore-support",
+      "tags": [],
+      "bookmarked": false,
+      "public": false,
+      "modelId": null,
+      "inputPrice": null,
+      "outputPrice": null,
+      "totalPrice": null
+    }
+  ],
+  "scores": [
+    {
+      "id": "a51e1cdff0397884",
+      "name": "expected_tool_check",
+      "source": "API",
+      "timestamp": "2026-11-24T12:55:18.350Z",
+      "environment": "default",
+      "createdAt": "2026-11-24T12:55:21.000Z",
+      "updatedAt": "2026-11-24T12:55:20.078Z",
+      "comment": "automated check by run_demo.py: expected first tool cancel_order, got cancel_order",
+      "configId": null,
+      "metadata": {},
+      "subject": {
+        "kind": "trace",
+        "id": "4e30ecd2dd0cd2465c2fafac242f5a8c"
+      },
+      "dataType": "NUMERIC",
+      "value": 1,
+      "traceId": "4e30ecd2dd0cd2465c2fafac242f5a8c"
+    }
+  ],
+  "reconstructedFrom": "GET /api/public/v2/observations (no trace-level fields in v2; name/input/output/metadata taken from the root observation)"
+}
