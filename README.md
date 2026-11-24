@@ -1,5 +1,7 @@
 # langfuse-trace-triage
 
+[![tests](https://github.com/hassanhere99/langfuse-trace-triage/actions/workflows/tests.yml/badge.svg)](https://github.com/hassanhere99/langfuse-trace-triage/actions/workflows/tests.yml)
+
 ## What it does
 
 A Claude Code skill that reads a Langfuse trace from an LLM agent and works out why the response went wrong. For each trace it names the failure type (wrong tool, wrong arguments, overlapping tool descriptions, a mishandled tool error and others), quotes the evidence from the trace, and suggests a fix, usually a change to a tool description or schema. It also writes a promptfoo test case that replays the failing model step.
