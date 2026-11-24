@@ -85,7 +85,7 @@ description: Replay failing generations from Langfuse traces
 prompts:
   - file://chat.json          # the whole file is one line: {{ messages | dump }}
 providers:
-  - id: anthropic:messages:claude-sonnet-5   # use the model the agent ran with
+  - id: anthropic:messages:claude-haiku-5-5   # use the model the agent ran with
     config:
       temperature: 0
       max_tokens: 1024
@@ -156,7 +156,7 @@ Guidance for writing the assertions:
 - Check the tool name and the specific arguments that decide correctness. Do not assert on every argument; unrelated differences should not fail the test.
 - For `missing_tool_call`, assert that a `tool_use` line exists and has the right name.
 - For `unnecessary_tool_call`, assert that no line starts with `{"type":"tool_use"`, or that `calls.length` equals the number the correct run would make.
-- For `wrong_arguments`, assert the argument value, with a regular expression if the format is the point: `/^BK-\d{4}$/.test(call.input.order_id)`.
+- For `wrong_arguments`, assert the argument value, with a regular expression if the format is the point: `/^BK-\d+$/.test(call.input.order_id)`.
 - For `leaked_internals` and `tool_error_mishandled`, the text of the final answer is what matters. If the replay ends with a tool result and the model is expected to reply in text, `output` is that text; check it with `javascript` (for example, that it does not contain the raw error string) before reaching for `llm-rubric`.
 - Messages containing tool results use `role: user` with `tool_result` blocks, and the preceding assistant message must contain the matching `tool_use` block with the same `id`.
 
