@@ -67,17 +67,21 @@ def load_trace_data(data):
 
 
 def order_observations(observations):
-    """Sort by startTime (ISO 8601 strings sort lexically). Observations without startTime
-    keep their file position relative to the previous observation."""
+    """Sort by startTime (ISO 8601 strings sort lexically), then by endTime, then file position.
+
+    Timestamps have millisecond resolution, so a tool call and the generation that follows it
+    can share a startTime. The tool call ends first, so the endTime tie-break puts it first.
+    Observations without startTime keep their file position relative to the previous one."""
     keyed = []
     last = ""
     for index, obs in enumerate(observations):
         start = obs.get("startTime")
         if isinstance(start, str) and start:
             last = start
-        keyed.append((last, index, obs))
-    keyed.sort(key=lambda item: (item[0], item[1]))
-    return [item[2] for item in keyed]
+        end = obs.get("endTime")
+        keyed.append((last, end if isinstance(end, str) and end else "\uffff", index, obs))
+    keyed.sort(key=lambda item: item[:3])
+    return [item[3] for item in keyed]
 
 
 def obs_type(obs):

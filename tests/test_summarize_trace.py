@@ -203,6 +203,18 @@ def test_cli_bad_file_exits_nonzero(tmp_path):
     assert res.returncode == 1 and "error:" in res.stderr
 
 
+def test_same_start_time_orders_by_end_time():
+    obs = [
+        {"id": "g2", "type": "GENERATION", "name": "llm-call-2",
+         "startTime": "2026-01-01T00:00:01.000Z", "endTime": "2026-01-01T00:00:05.000Z"},
+        {"id": "t1", "type": "TOOL", "name": "tool:x",
+         "startTime": "2026-01-01T00:00:01.000Z", "endTime": "2026-01-01T00:00:01.000Z"},
+        {"id": "g1", "type": "GENERATION", "name": "llm-call-1",
+         "startTime": "2026-01-01T00:00:00.000Z", "endTime": "2026-01-01T00:00:01.000Z"},
+    ]
+    assert [o["id"] for o in st.order_observations(obs)] == ["g1", "t1", "g2"]
+
+
 @pytest.mark.skipif(not EXAMPLE_TRACES, reason="no files in examples/traces yet")
 @pytest.mark.parametrize("path", EXAMPLE_TRACES, ids=lambda p: p.name)
 def test_example_traces_summarize_and_find_user_message(path):
