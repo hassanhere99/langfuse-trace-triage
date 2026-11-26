@@ -1,0 +1,267 @@
+{
+  "id": "bfcf42231af6a43ae70a171b3fd56c8d",
+  "timestamp": "2026-11-26T19:12:48.695Z",
+  "name": "bookstore-support",
+  "input": "I don't want the book in order BK-10571 anymore, please start a return.",
+  "output": "{\"name\":\"start_return\",\"parameters{\"}",
+  "metadata": {
+    "temperature": 0.7,
+    "run": 3,
+    "experiment": "before-after-2026-11",
+    "agent_variant": "flawed",
+    "scenario_id": "return_processing_order"
+  },
+  "tags": [],
+  "sessionId": null,
+  "environment": "default",
+  "observations": [
+    {
+      "id": "d3d393c2dc59d8ac",
+      "traceId": "bfcf42231af6a43ae70a171b3fd56c8d",
+      "startTime": "2026-11-26T19:12:48.695Z",
+      "endTime": "2026-11-26T19:12:55.595Z",
+      "parentObservationId": null,
+      "type": "SPAN",
+      "name": "agent-run",
+      "level": "DEFAULT",
+      "statusMessage": "",
+      "environment": "default",
+      "completionStartTime": null,
+      "createdAt": "2026-11-26T19:12:57.384Z",
+      "updatedAt": "2026-11-26T19:12:57.384Z",
+      "input": "I don't want the book in order BK-10571 anymore, please start a return.",
+      "output": "{\"name\":\"start_return\",\"parameters{\"}",
+      "metadata": {
+        "temperature": 0.7,
+        "run": 3,
+        "experiment": "before-after-2026-11",
+        "agent_variant": "flawed",
+        "scenario_id": "return_processing_order"
+      },
+      "model": "",
+      "internalModelId": "",
+      "modelParameters": {},
+      "usageDetails": {},
+      "inputUsage": 0,
+      "outputUsage": 0,
+      "totalUsage": 0,
+      "costDetails": {},
+      "inputCost": null,
+      "outputCost": null,
+      "totalCost": null,
+      "usagePricingTierId": null,
+      "usagePricingTierName": null,
+      "latency": 6.9,
+      "timeToFirstToken": null,
+      "sessionId": "",
+      "isRootObservation": true,
+      "traceName": "bookstore-support",
+      "tags": [],
+      "bookmarked": false,
+      "public": false,
+      "modelId": null,
+      "inputPrice": null,
+      "outputPrice": null,
+      "totalPrice": null
+    },
+    {
+      "id": "afbf2bda321828b8",
+      "traceId": "bfcf42231af6a43ae70a171b3fd56c8d",
+      "startTime": "2026-11-26T19:12:48.695Z",
+      "endTime": "2026-11-26T19:12:55.595Z",
+      "parentObservationId": "d3d393c2dc59d8ac",
+      "type": "GENERATION",
+      "name": "llm-call-1",
+      "level": "DEFAULT",
+      "statusMessage": "",
+      "environment": "default",
+      "completionStartTime": null,
+      "createdAt": "2026-11-26T19:12:57.384Z",
+      "updatedAt": "2026-11-26T19:12:57.384Z",
+      "input": {
+        "messages": [
+          {
+            "role": "system",
+            "content": "You are a customer support assistant for an online bookstore. Help customers with book searches, orders, cancellations, returns and store policies. Be concise and polite."
+          },
+          {
+            "role": "user",
+            "content": "I don't want the book in order BK-10571 anymore, please start a return."
+          }
+        ],
+        "tools": [
+          {
+            "type": "function",
+            "function": {
+              "name": "search_books",
+              "description": "Search the bookstore catalog by title, author or ISBN. Returns up to five matching books with ISBN, title, author, price in USD and the number of copies in stock.",
+              "parameters": {
+                "type": "object",
+                "properties": {
+                  "query": {
+                    "type": "string",
+                    "description": "A title, author name or ISBN to search for."
+                  }
+                },
+                "required": [
+                  "query"
+                ]
+              }
+            }
+          },
+          {
+            "type": "function",
+            "function": {
+              "name": "get_order_status",
+              "description": "Look up an order and return its status, items and key dates.",
+              "parameters": {
+                "type": "object",
+                "properties": {
+                  "order_id": {
+                    "type": "string",
+                    "description": "The order ID"
+                  }
+                },
+                "required": [
+                  "order_id"
+                ]
+              }
+            }
+          },
+          {
+            "type": "function",
+            "function": {
+              "name": "cancel_order",
+              "description": "Undo an order. Use this when the customer wants to reverse or back out of an order they placed.",
+              "parameters": {
+                "type": "object",
+                "properties": {
+                  "order_id": {
+                    "type": "string",
+                    "description": "The order ID"
+                  }
+                },
+                "required": [
+                  "order_id"
+                ]
+              }
+            }
+          },
+          {
+            "type": "function",
+            "function": {
+              "name": "start_return",
+              "description": "Reverse an order. Use this when the customer wants to undo a purchase and get their money back.",
+              "parameters": {
+                "type": "object",
+                "properties": {
+                  "order_id": {
+                    "type": "string",
+                    "description": "The order ID"
+                  },
+                  "reason": {
+                    "type": "string",
+                    "description": "Why the customer wants to return the order."
+                  }
+                },
+                "required": [
+                  "order_id"
+                ]
+              }
+            }
+          },
+          {
+            "type": "function",
+            "function": {
+              "name": "get_store_policy",
+              "description": "Return the official store policy text for one topic: returns, shipping or cancellations. Use it for questions about how the store's rules work rather than about a specific order.",
+              "parameters": {
+                "type": "object",
+                "properties": {
+                  "topic": {
+                    "type": "string",
+                    "enum": [
+                      "returns",
+                      "shipping",
+                      "cancellations"
+                    ],
+                    "description": "The policy topic to look up."
+                  }
+                },
+                "required": [
+                  "topic"
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "output": {
+        "role": "assistant",
+        "content": "{\"name\":\"start_return\",\"parameters{\"}"
+      },
+      "metadata": {
+        "temperature": 0.7,
+        "run": 3,
+        "experiment": "before-after-2026-11",
+        "agent_variant": "flawed",
+        "scenario_id": "return_processing_order",
+        "finish_reason": "stop"
+      },
+      "model": "llama3.2:3b",
+      "internalModelId": "",
+      "modelParameters": {
+        "temperature": 0.7,
+        "max_tokens": 4096
+      },
+      "usageDetails": {
+        "input": 531,
+        "output": 10,
+        "total": 541
+      },
+      "inputUsage": 531,
+      "outputUsage": 10,
+      "totalUsage": 541,
+      "costDetails": {},
+      "inputCost": null,
+      "outputCost": null,
+      "totalCost": null,
+      "usagePricingTierId": null,
+      "usagePricingTierName": null,
+      "latency": 6.9,
+      "timeToFirstToken": null,
+      "sessionId": "",
+      "isRootObservation": false,
+      "traceName": "bookstore-support",
+      "tags": [],
+      "bookmarked": false,
+      "public": false,
+      "modelId": null,
+      "inputPrice": null,
+      "outputPrice": null,
+      "totalPrice": null
+    }
+  ],
+  "scores": [
+    {
+      "id": "cae8400c9a0c4200",
+      "name": "expected_tool_check",
+      "source": "API",
+      "timestamp": "2026-11-26T19:12:55.595Z",
+      "environment": "default",
+      "createdAt": "2026-11-26T19:12:58.000Z",
+      "updatedAt": "2026-11-26T19:12:57.365Z",
+      "comment": "automated check by run_demo.py: expected first tool start_return, got none",
+      "configId": null,
+      "metadata": {},
+      "subject": {
+        "kind": "trace",
+        "id": "bfcf42231af6a43ae70a171b3fd56c8d"
+      },
+      "dataType": "NUMERIC",
+      "value": 0,
+      "traceId": "bfcf42231af6a43ae70a171b3fd56c8d"
+    }
+  ],
+  "reconstructedFrom": "GET /api/public/v2/observations (no trace-level fields in v2; name/input/output/metadata taken from the root observation)"
+}

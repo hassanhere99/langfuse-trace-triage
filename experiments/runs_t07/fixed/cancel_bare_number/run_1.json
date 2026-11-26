@@ -1,0 +1,528 @@
+{
+  "id": "2ca3793bfd66a52e16663d3efd81c4fe",
+  "timestamp": "2026-11-26T19:07:15.023Z",
+  "name": "bookstore-support",
+  "input": "Please cancel order 10571.",
+  "output": "Thank you for reaching out to our customer support. We have successfully cancelled your order with order number BK-10571. A full refund has been issued to the original payment method. If you have any further questions or concerns, please don't hesitate to contact us. Is there anything else I can assist you with today?",
+  "metadata": {
+    "temperature": 0.7,
+    "run": 1,
+    "experiment": "before-after-2026-11",
+    "agent_variant": "fixed",
+    "scenario_id": "cancel_bare_number"
+  },
+  "tags": [],
+  "sessionId": null,
+  "environment": "default",
+  "observations": [
+    {
+      "id": "b01527348c47c6c7",
+      "traceId": "2ca3793bfd66a52e16663d3efd81c4fe",
+      "startTime": "2026-11-26T19:07:15.023Z",
+      "endTime": "2026-11-26T19:07:23.048Z",
+      "parentObservationId": "1c35d429137ea25f",
+      "type": "GENERATION",
+      "name": "llm-call-1",
+      "level": "DEFAULT",
+      "statusMessage": "",
+      "environment": "default",
+      "completionStartTime": null,
+      "createdAt": "2026-11-26T19:07:26.788Z",
+      "updatedAt": "2026-11-26T19:07:26.788Z",
+      "input": {
+        "messages": [
+          {
+            "role": "system",
+            "content": "You are a customer support assistant for an online bookstore. Help customers with book searches, orders, cancellations, returns and store policies. Be concise and polite."
+          },
+          {
+            "role": "user",
+            "content": "Please cancel order 10571."
+          }
+        ],
+        "tools": [
+          {
+            "type": "function",
+            "function": {
+              "name": "search_books",
+              "description": "Search the bookstore catalog by title, author or ISBN. Returns up to five matching books with ISBN, title, author, price in USD and the number of copies in stock.",
+              "parameters": {
+                "type": "object",
+                "properties": {
+                  "query": {
+                    "type": "string",
+                    "description": "A title, author name or ISBN to search for."
+                  }
+                },
+                "required": [
+                  "query"
+                ]
+              }
+            }
+          },
+          {
+            "type": "function",
+            "function": {
+              "name": "get_order_status",
+              "description": "Look up an order and return its status, items and key dates.",
+              "parameters": {
+                "type": "object",
+                "properties": {
+                  "order_id": {
+                    "type": "string",
+                    "description": "The order ID. Format: BK- followed by 5 digits, e.g. BK-10571."
+                  }
+                },
+                "required": [
+                  "order_id"
+                ]
+              }
+            }
+          },
+          {
+            "type": "function",
+            "function": {
+              "name": "cancel_order",
+              "description": "Undo an order. Use this when the customer wants to reverse or back out of an order they placed.",
+              "parameters": {
+                "type": "object",
+                "properties": {
+                  "order_id": {
+                    "type": "string",
+                    "description": "The order ID. Format: BK- followed by 5 digits, e.g. BK-10571."
+                  }
+                },
+                "required": [
+                  "order_id"
+                ]
+              }
+            }
+          },
+          {
+            "type": "function",
+            "function": {
+              "name": "start_return",
+              "description": "Reverse an order. Use this when the customer wants to undo a purchase and get their money back.",
+              "parameters": {
+                "type": "object",
+                "properties": {
+                  "order_id": {
+                    "type": "string",
+                    "description": "The order ID. Format: BK- followed by 5 digits, e.g. BK-10571."
+                  },
+                  "reason": {
+                    "type": "string",
+                    "description": "Why the customer wants to return the order."
+                  }
+                },
+                "required": [
+                  "order_id"
+                ]
+              }
+            }
+          },
+          {
+            "type": "function",
+            "function": {
+              "name": "get_store_policy",
+              "description": "Return the official store policy text for one topic: returns, shipping or cancellations. Use it for questions about how the store's rules work rather than about a specific order.",
+              "parameters": {
+                "type": "object",
+                "properties": {
+                  "topic": {
+                    "type": "string",
+                    "enum": [
+                      "returns",
+                      "shipping",
+                      "cancellations"
+                    ],
+                    "description": "The policy topic to look up."
+                  }
+                },
+                "required": [
+                  "topic"
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "output": {
+        "role": "assistant",
+        "content": "",
+        "tool_calls": [
+          {
+            "id": "call_xfmyrewp",
+            "type": "function",
+            "function": {
+              "name": "cancel_order",
+              "arguments": "{\"order_id\":\"BK-10571\"}"
+            }
+          }
+        ]
+      },
+      "metadata": {
+        "temperature": 0.7,
+        "run": 1,
+        "experiment": "before-after-2026-11",
+        "agent_variant": "fixed",
+        "scenario_id": "cancel_bare_number",
+        "finish_reason": "tool_calls"
+      },
+      "model": "llama3.2:3b",
+      "internalModelId": "",
+      "modelParameters": {
+        "temperature": 0.7,
+        "max_tokens": 4096
+      },
+      "usageDetails": {
+        "input": 576,
+        "output": 19,
+        "total": 595
+      },
+      "inputUsage": 576,
+      "outputUsage": 19,
+      "totalUsage": 595,
+      "costDetails": {},
+      "inputCost": null,
+      "outputCost": null,
+      "totalCost": null,
+      "usagePricingTierId": null,
+      "usagePricingTierName": null,
+      "latency": 8.025,
+      "timeToFirstToken": null,
+      "sessionId": "",
+      "isRootObservation": false,
+      "traceName": "bookstore-support",
+      "tags": [],
+      "bookmarked": false,
+      "public": false,
+      "modelId": null,
+      "inputPrice": null,
+      "outputPrice": null,
+      "totalPrice": null
+    },
+    {
+      "id": "1c35d429137ea25f",
+      "traceId": "2ca3793bfd66a52e16663d3efd81c4fe",
+      "startTime": "2026-11-26T19:07:15.023Z",
+      "endTime": "2026-11-26T19:07:32.327Z",
+      "parentObservationId": null,
+      "type": "SPAN",
+      "name": "agent-run",
+      "level": "DEFAULT",
+      "statusMessage": "",
+      "environment": "default",
+      "completionStartTime": null,
+      "createdAt": "2026-11-26T19:07:32.952Z",
+      "updatedAt": "2026-11-26T19:07:32.952Z",
+      "input": "Please cancel order 10571.",
+      "output": "Thank you for reaching out to our customer support. We have successfully cancelled your order with order number BK-10571. A full refund has been issued to the original payment method. If you have any further questions or concerns, please don't hesitate to contact us. Is there anything else I can assist you with today?",
+      "metadata": {
+        "temperature": 0.7,
+        "run": 1,
+        "experiment": "before-after-2026-11",
+        "agent_variant": "fixed",
+        "scenario_id": "cancel_bare_number"
+      },
+      "model": "",
+      "internalModelId": "",
+      "modelParameters": {},
+      "usageDetails": {},
+      "inputUsage": 0,
+      "outputUsage": 0,
+      "totalUsage": 0,
+      "costDetails": {},
+      "inputCost": null,
+      "outputCost": null,
+      "totalCost": null,
+      "usagePricingTierId": null,
+      "usagePricingTierName": null,
+      "latency": 17.304,
+      "timeToFirstToken": null,
+      "sessionId": "",
+      "isRootObservation": true,
+      "traceName": "bookstore-support",
+      "tags": [],
+      "bookmarked": false,
+      "public": false,
+      "modelId": null,
+      "inputPrice": null,
+      "outputPrice": null,
+      "totalPrice": null
+    },
+    {
+      "id": "fd854bf859af5cf7",
+      "traceId": "2ca3793bfd66a52e16663d3efd81c4fe",
+      "startTime": "2026-11-26T19:07:23.049Z",
+      "endTime": "2026-11-26T19:07:23.049Z",
+      "parentObservationId": "1c35d429137ea25f",
+      "type": "TOOL",
+      "name": "tool:cancel_order",
+      "level": "DEFAULT",
+      "statusMessage": "",
+      "environment": "default",
+      "completionStartTime": null,
+      "createdAt": "2026-11-26T19:07:26.788Z",
+      "updatedAt": "2026-11-26T19:07:26.788Z",
+      "input": {
+        "order_id": "BK-10571"
+      },
+      "output": {
+        "order_id": "BK-10571",
+        "status": "cancelled",
+        "refund": "Full refund issued to the original payment method."
+      },
+      "metadata": {
+        "temperature": 0.7,
+        "run": 1,
+        "experiment": "before-after-2026-11",
+        "agent_variant": "fixed",
+        "scenario_id": "cancel_bare_number"
+      },
+      "model": "",
+      "internalModelId": "",
+      "modelParameters": {},
+      "usageDetails": {},
+      "inputUsage": 0,
+      "outputUsage": 0,
+      "totalUsage": 0,
+      "costDetails": {},
+      "inputCost": null,
+      "outputCost": null,
+      "totalCost": null,
+      "usagePricingTierId": null,
+      "usagePricingTierName": null,
+      "latency": 0,
+      "timeToFirstToken": null,
+      "sessionId": "",
+      "isRootObservation": false,
+      "traceName": "bookstore-support",
+      "tags": [],
+      "bookmarked": false,
+      "public": false,
+      "modelId": null,
+      "inputPrice": null,
+      "outputPrice": null,
+      "totalPrice": null
+    },
+    {
+      "id": "e270d8b1dd194faf",
+      "traceId": "2ca3793bfd66a52e16663d3efd81c4fe",
+      "startTime": "2026-11-26T19:07:23.049Z",
+      "endTime": "2026-11-26T19:07:32.327Z",
+      "parentObservationId": "1c35d429137ea25f",
+      "type": "GENERATION",
+      "name": "llm-call-2",
+      "level": "DEFAULT",
+      "statusMessage": "",
+      "environment": "default",
+      "completionStartTime": null,
+      "createdAt": "2026-11-26T19:07:32.952Z",
+      "updatedAt": "2026-11-26T19:07:32.952Z",
+      "input": {
+        "messages": [
+          {
+            "role": "system",
+            "content": "You are a customer support assistant for an online bookstore. Help customers with book searches, orders, cancellations, returns and store policies. Be concise and polite."
+          },
+          {
+            "role": "user",
+            "content": "Please cancel order 10571."
+          },
+          {
+            "role": "assistant",
+            "content": "",
+            "tool_calls": [
+              {
+                "id": "call_xfmyrewp",
+                "type": "function",
+                "function": {
+                  "name": "cancel_order",
+                  "arguments": "{\"order_id\":\"BK-10571\"}"
+                }
+              }
+            ]
+          },
+          {
+            "role": "tool",
+            "tool_call_id": "call_xfmyrewp",
+            "content": "{\"order_id\": \"BK-10571\", \"status\": \"cancelled\", \"refund\": \"Full refund issued to the original payment method.\"}"
+          }
+        ],
+        "tools": [
+          {
+            "type": "function",
+            "function": {
+              "name": "search_books",
+              "description": "Search the bookstore catalog by title, author or ISBN. Returns up to five matching books with ISBN, title, author, price in USD and the number of copies in stock.",
+              "parameters": {
+                "type": "object",
+                "properties": {
+                  "query": {
+                    "type": "string",
+                    "description": "A title, author name or ISBN to search for."
+                  }
+                },
+                "required": [
+                  "query"
+                ]
+              }
+            }
+          },
+          {
+            "type": "function",
+            "function": {
+              "name": "get_order_status",
+              "description": "Look up an order and return its status, items and key dates.",
+              "parameters": {
+                "type": "object",
+                "properties": {
+                  "order_id": {
+                    "type": "string",
+                    "description": "The order ID. Format: BK- followed by 5 digits, e.g. BK-10571."
+                  }
+                },
+                "required": [
+                  "order_id"
+                ]
+              }
+            }
+          },
+          {
+            "type": "function",
+            "function": {
+              "name": "cancel_order",
+              "description": "Undo an order. Use this when the customer wants to reverse or back out of an order they placed.",
+              "parameters": {
+                "type": "object",
+                "properties": {
+                  "order_id": {
+                    "type": "string",
+                    "description": "The order ID. Format: BK- followed by 5 digits, e.g. BK-10571."
+                  }
+                },
+                "required": [
+                  "order_id"
+                ]
+              }
+            }
+          },
+          {
+            "type": "function",
+            "function": {
+              "name": "start_return",
+              "description": "Reverse an order. Use this when the customer wants to undo a purchase and get their money back.",
+              "parameters": {
+                "type": "object",
+                "properties": {
+                  "order_id": {
+                    "type": "string",
+                    "description": "The order ID. Format: BK- followed by 5 digits, e.g. BK-10571."
+                  },
+                  "reason": {
+                    "type": "string",
+                    "description": "Why the customer wants to return the order."
+                  }
+                },
+                "required": [
+                  "order_id"
+                ]
+              }
+            }
+          },
+          {
+            "type": "function",
+            "function": {
+              "name": "get_store_policy",
+              "description": "Return the official store policy text for one topic: returns, shipping or cancellations. Use it for questions about how the store's rules work rather than about a specific order.",
+              "parameters": {
+                "type": "object",
+                "properties": {
+                  "topic": {
+                    "type": "string",
+                    "enum": [
+                      "returns",
+                      "shipping",
+                      "cancellations"
+                    ],
+                    "description": "The policy topic to look up."
+                  }
+                },
+                "required": [
+                  "topic"
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "output": {
+        "role": "assistant",
+        "content": "Thank you for reaching out to our customer support. We have successfully cancelled your order with order number BK-10571. A full refund has been issued to the original payment method. If you have any further questions or concerns, please don't hesitate to contact us. Is there anything else I can assist you with today?"
+      },
+      "metadata": {
+        "temperature": 0.7,
+        "run": 1,
+        "experiment": "before-after-2026-11",
+        "agent_variant": "fixed",
+        "scenario_id": "cancel_bare_number",
+        "finish_reason": "stop"
+      },
+      "model": "llama3.2:3b",
+      "internalModelId": "",
+      "modelParameters": {
+        "temperature": 0.7,
+        "max_tokens": 4096
+      },
+      "usageDetails": {
+        "input": 155,
+        "output": 65,
+        "total": 220
+      },
+      "inputUsage": 155,
+      "outputUsage": 65,
+      "totalUsage": 220,
+      "costDetails": {},
+      "inputCost": null,
+      "outputCost": null,
+      "totalCost": null,
+      "usagePricingTierId": null,
+      "usagePricingTierName": null,
+      "latency": 9.278,
+      "timeToFirstToken": null,
+      "sessionId": "",
+      "isRootObservation": false,
+      "traceName": "bookstore-support",
+      "tags": [],
+      "bookmarked": false,
+      "public": false,
+      "modelId": null,
+      "inputPrice": null,
+      "outputPrice": null,
+      "totalPrice": null
+    }
+  ],
+  "scores": [
+    {
+      "id": "f013ad4142a25bf1",
+      "name": "expected_tool_check",
+      "source": "API",
+      "timestamp": "2026-11-26T19:07:32.327Z",
+      "environment": "default",
+      "createdAt": "2026-11-26T19:07:35.000Z",
+      "updatedAt": "2026-11-26T19:07:34.412Z",
+      "comment": "automated check by run_demo.py: expected first tool cancel_order, got cancel_order",
+      "configId": null,
+      "metadata": {},
+      "subject": {
+        "kind": "trace",
+        "id": "2ca3793bfd66a52e16663d3efd81c4fe"
+      },
+      "dataType": "NUMERIC",
+      "value": 1,
+      "traceId": "2ca3793bfd66a52e16663d3efd81c4fe"
+    }
+  ],
+  "reconstructedFrom": "GET /api/public/v2/observations (no trace-level fields in v2; name/input/output/metadata taken from the root observation)"
+}

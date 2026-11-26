@@ -1,0 +1,527 @@
+{
+  "id": "2acb43247bada25fa369a084e070ae00",
+  "timestamp": "2026-11-26T19:08:17.356Z",
+  "name": "bookstore-support",
+  "input": "I don't want the book in order BK-10571 anymore, please start a return.",
+  "output": "I apologize for the inconvenience, but it seems that your return request for order BK-10571 is not eligible for return at this time. The order status is currently \"processing\" and we cannot initiate a return for orders that have already been processed.\n\nTo proceed with a return, please contact our customer support team to discuss possible alternatives or cancellations. We'll be happy to assist you further.\n\nWould you like to proceed with contacting our customer support team or would you like to explore other options?",
+  "metadata": {
+    "temperature": 0.7,
+    "run": 1,
+    "experiment": "before-after-2026-11",
+    "agent_variant": "flawed",
+    "scenario_id": "return_processing_order"
+  },
+  "tags": [],
+  "sessionId": null,
+  "environment": "default",
+  "observations": [
+    {
+      "id": "67b8e3e5de10fe36",
+      "traceId": "2acb43247bada25fa369a084e070ae00",
+      "startTime": "2026-11-26T19:08:17.356Z",
+      "endTime": "2026-11-26T19:08:40.805Z",
+      "parentObservationId": null,
+      "type": "SPAN",
+      "name": "agent-run",
+      "level": "DEFAULT",
+      "statusMessage": "",
+      "environment": "default",
+      "completionStartTime": null,
+      "createdAt": "2026-11-26T19:08:41.453Z",
+      "updatedAt": "2026-11-26T19:08:41.453Z",
+      "input": "I don't want the book in order BK-10571 anymore, please start a return.",
+      "output": "I apologize for the inconvenience, but it seems that your return request for order BK-10571 is not eligible for return at this time. The order status is currently \"processing\" and we cannot initiate a return for orders that have already been processed.\n\nTo proceed with a return, please contact our customer support team to discuss possible alternatives or cancellations. We'll be happy to assist you further.\n\nWould you like to proceed with contacting our customer support team or would you like to explore other options?",
+      "metadata": {
+        "temperature": 0.7,
+        "run": 1,
+        "experiment": "before-after-2026-11",
+        "agent_variant": "flawed",
+        "scenario_id": "return_processing_order"
+      },
+      "model": "",
+      "internalModelId": "",
+      "modelParameters": {},
+      "usageDetails": {},
+      "inputUsage": 0,
+      "outputUsage": 0,
+      "totalUsage": 0,
+      "costDetails": {},
+      "inputCost": null,
+      "outputCost": null,
+      "totalCost": null,
+      "usagePricingTierId": null,
+      "usagePricingTierName": null,
+      "latency": 23.449,
+      "timeToFirstToken": null,
+      "sessionId": "",
+      "isRootObservation": true,
+      "traceName": "bookstore-support",
+      "tags": [],
+      "bookmarked": false,
+      "public": false,
+      "modelId": null,
+      "inputPrice": null,
+      "outputPrice": null,
+      "totalPrice": null
+    },
+    {
+      "id": "edd7b4009d3aa1c4",
+      "traceId": "2acb43247bada25fa369a084e070ae00",
+      "startTime": "2026-11-26T19:08:17.357Z",
+      "endTime": "2026-11-26T19:08:25.918Z",
+      "parentObservationId": "67b8e3e5de10fe36",
+      "type": "GENERATION",
+      "name": "llm-call-1",
+      "level": "DEFAULT",
+      "statusMessage": "",
+      "environment": "default",
+      "completionStartTime": null,
+      "createdAt": "2026-11-26T19:08:28.034Z",
+      "updatedAt": "2026-11-26T19:08:28.034Z",
+      "input": {
+        "messages": [
+          {
+            "role": "system",
+            "content": "You are a customer support assistant for an online bookstore. Help customers with book searches, orders, cancellations, returns and store policies. Be concise and polite."
+          },
+          {
+            "role": "user",
+            "content": "I don't want the book in order BK-10571 anymore, please start a return."
+          }
+        ],
+        "tools": [
+          {
+            "type": "function",
+            "function": {
+              "name": "search_books",
+              "description": "Search the bookstore catalog by title, author or ISBN. Returns up to five matching books with ISBN, title, author, price in USD and the number of copies in stock.",
+              "parameters": {
+                "type": "object",
+                "properties": {
+                  "query": {
+                    "type": "string",
+                    "description": "A title, author name or ISBN to search for."
+                  }
+                },
+                "required": [
+                  "query"
+                ]
+              }
+            }
+          },
+          {
+            "type": "function",
+            "function": {
+              "name": "get_order_status",
+              "description": "Look up an order and return its status, items and key dates.",
+              "parameters": {
+                "type": "object",
+                "properties": {
+                  "order_id": {
+                    "type": "string",
+                    "description": "The order ID"
+                  }
+                },
+                "required": [
+                  "order_id"
+                ]
+              }
+            }
+          },
+          {
+            "type": "function",
+            "function": {
+              "name": "cancel_order",
+              "description": "Undo an order. Use this when the customer wants to reverse or back out of an order they placed.",
+              "parameters": {
+                "type": "object",
+                "properties": {
+                  "order_id": {
+                    "type": "string",
+                    "description": "The order ID"
+                  }
+                },
+                "required": [
+                  "order_id"
+                ]
+              }
+            }
+          },
+          {
+            "type": "function",
+            "function": {
+              "name": "start_return",
+              "description": "Reverse an order. Use this when the customer wants to undo a purchase and get their money back.",
+              "parameters": {
+                "type": "object",
+                "properties": {
+                  "order_id": {
+                    "type": "string",
+                    "description": "The order ID"
+                  },
+                  "reason": {
+                    "type": "string",
+                    "description": "Why the customer wants to return the order."
+                  }
+                },
+                "required": [
+                  "order_id"
+                ]
+              }
+            }
+          },
+          {
+            "type": "function",
+            "function": {
+              "name": "get_store_policy",
+              "description": "Return the official store policy text for one topic: returns, shipping or cancellations. Use it for questions about how the store's rules work rather than about a specific order.",
+              "parameters": {
+                "type": "object",
+                "properties": {
+                  "topic": {
+                    "type": "string",
+                    "enum": [
+                      "returns",
+                      "shipping",
+                      "cancellations"
+                    ],
+                    "description": "The policy topic to look up."
+                  }
+                },
+                "required": [
+                  "topic"
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "output": {
+        "role": "assistant",
+        "content": "",
+        "tool_calls": [
+          {
+            "id": "call_asdyny8f",
+            "type": "function",
+            "function": {
+              "name": "start_return",
+              "arguments": "{\"order_id\":\"BK-10571\",\"reason\":\"I no longer want the book\"}"
+            }
+          }
+        ]
+      },
+      "metadata": {
+        "temperature": 0.7,
+        "run": 1,
+        "experiment": "before-after-2026-11",
+        "agent_variant": "flawed",
+        "scenario_id": "return_processing_order",
+        "finish_reason": "tool_calls"
+      },
+      "model": "llama3.2:3b",
+      "internalModelId": "",
+      "modelParameters": {
+        "temperature": 0.7,
+        "max_tokens": 4096
+      },
+      "usageDetails": {
+        "input": 531,
+        "output": 26,
+        "total": 557
+      },
+      "inputUsage": 531,
+      "outputUsage": 26,
+      "totalUsage": 557,
+      "costDetails": {},
+      "inputCost": null,
+      "outputCost": null,
+      "totalCost": null,
+      "usagePricingTierId": null,
+      "usagePricingTierName": null,
+      "latency": 8.561,
+      "timeToFirstToken": null,
+      "sessionId": "",
+      "isRootObservation": false,
+      "traceName": "bookstore-support",
+      "tags": [],
+      "bookmarked": false,
+      "public": false,
+      "modelId": null,
+      "inputPrice": null,
+      "outputPrice": null,
+      "totalPrice": null
+    },
+    {
+      "id": "ffff1df2ef303f43",
+      "traceId": "2acb43247bada25fa369a084e070ae00",
+      "startTime": "2026-11-26T19:08:25.918Z",
+      "endTime": "2026-11-26T19:08:40.805Z",
+      "parentObservationId": "67b8e3e5de10fe36",
+      "type": "GENERATION",
+      "name": "llm-call-2",
+      "level": "DEFAULT",
+      "statusMessage": "",
+      "environment": "default",
+      "completionStartTime": null,
+      "createdAt": "2026-11-26T19:08:41.453Z",
+      "updatedAt": "2026-11-26T19:08:41.453Z",
+      "input": {
+        "messages": [
+          {
+            "role": "system",
+            "content": "You are a customer support assistant for an online bookstore. Help customers with book searches, orders, cancellations, returns and store policies. Be concise and polite."
+          },
+          {
+            "role": "user",
+            "content": "I don't want the book in order BK-10571 anymore, please start a return."
+          },
+          {
+            "role": "assistant",
+            "content": "",
+            "tool_calls": [
+              {
+                "id": "call_asdyny8f",
+                "type": "function",
+                "function": {
+                  "name": "start_return",
+                  "arguments": "{\"order_id\":\"BK-10571\",\"reason\":\"I no longer want the book\"}"
+                }
+              }
+            ]
+          },
+          {
+            "role": "tool",
+            "tool_call_id": "call_asdyny8f",
+            "content": "{\"error\": \"Order BK-10571 is not eligible for return because its status is processing.\"}"
+          }
+        ],
+        "tools": [
+          {
+            "type": "function",
+            "function": {
+              "name": "search_books",
+              "description": "Search the bookstore catalog by title, author or ISBN. Returns up to five matching books with ISBN, title, author, price in USD and the number of copies in stock.",
+              "parameters": {
+                "type": "object",
+                "properties": {
+                  "query": {
+                    "type": "string",
+                    "description": "A title, author name or ISBN to search for."
+                  }
+                },
+                "required": [
+                  "query"
+                ]
+              }
+            }
+          },
+          {
+            "type": "function",
+            "function": {
+              "name": "get_order_status",
+              "description": "Look up an order and return its status, items and key dates.",
+              "parameters": {
+                "type": "object",
+                "properties": {
+                  "order_id": {
+                    "type": "string",
+                    "description": "The order ID"
+                  }
+                },
+                "required": [
+                  "order_id"
+                ]
+              }
+            }
+          },
+          {
+            "type": "function",
+            "function": {
+              "name": "cancel_order",
+              "description": "Undo an order. Use this when the customer wants to reverse or back out of an order they placed.",
+              "parameters": {
+                "type": "object",
+                "properties": {
+                  "order_id": {
+                    "type": "string",
+                    "description": "The order ID"
+                  }
+                },
+                "required": [
+                  "order_id"
+                ]
+              }
+            }
+          },
+          {
+            "type": "function",
+            "function": {
+              "name": "start_return",
+              "description": "Reverse an order. Use this when the customer wants to undo a purchase and get their money back.",
+              "parameters": {
+                "type": "object",
+                "properties": {
+                  "order_id": {
+                    "type": "string",
+                    "description": "The order ID"
+                  },
+                  "reason": {
+                    "type": "string",
+                    "description": "Why the customer wants to return the order."
+                  }
+                },
+                "required": [
+                  "order_id"
+                ]
+              }
+            }
+          },
+          {
+            "type": "function",
+            "function": {
+              "name": "get_store_policy",
+              "description": "Return the official store policy text for one topic: returns, shipping or cancellations. Use it for questions about how the store's rules work rather than about a specific order.",
+              "parameters": {
+                "type": "object",
+                "properties": {
+                  "topic": {
+                    "type": "string",
+                    "enum": [
+                      "returns",
+                      "shipping",
+                      "cancellations"
+                    ],
+                    "description": "The policy topic to look up."
+                  }
+                },
+                "required": [
+                  "topic"
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "output": {
+        "role": "assistant",
+        "content": "I apologize for the inconvenience, but it seems that your return request for order BK-10571 is not eligible for return at this time. The order status is currently \"processing\" and we cannot initiate a return for orders that have already been processed.\n\nTo proceed with a return, please contact our customer support team to discuss possible alternatives or cancellations. We'll be happy to assist you further.\n\nWould you like to proceed with contacting our customer support team or would you like to explore other options?"
+      },
+      "metadata": {
+        "temperature": 0.7,
+        "run": 1,
+        "experiment": "before-after-2026-11",
+        "agent_variant": "flawed",
+        "scenario_id": "return_processing_order",
+        "finish_reason": "stop"
+      },
+      "model": "llama3.2:3b",
+      "internalModelId": "",
+      "modelParameters": {
+        "temperature": 0.7,
+        "max_tokens": 4096
+      },
+      "usageDetails": {
+        "input": 167,
+        "output": 100,
+        "total": 267
+      },
+      "inputUsage": 167,
+      "outputUsage": 100,
+      "totalUsage": 267,
+      "costDetails": {},
+      "inputCost": null,
+      "outputCost": null,
+      "totalCost": null,
+      "usagePricingTierId": null,
+      "usagePricingTierName": null,
+      "latency": 14.887,
+      "timeToFirstToken": null,
+      "sessionId": "",
+      "isRootObservation": false,
+      "traceName": "bookstore-support",
+      "tags": [],
+      "bookmarked": false,
+      "public": false,
+      "modelId": null,
+      "inputPrice": null,
+      "outputPrice": null,
+      "totalPrice": null
+    },
+    {
+      "id": "30adcd2c0478dd09",
+      "traceId": "2acb43247bada25fa369a084e070ae00",
+      "startTime": "2026-11-26T19:08:25.918Z",
+      "endTime": "2026-11-26T19:08:25.918Z",
+      "parentObservationId": "67b8e3e5de10fe36",
+      "type": "TOOL",
+      "name": "tool:start_return",
+      "level": "ERROR",
+      "statusMessage": "Order BK-10571 is not eligible for return because its status is processing.",
+      "environment": "default",
+      "completionStartTime": null,
+      "createdAt": "2026-11-26T19:08:28.034Z",
+      "updatedAt": "2026-11-26T19:08:28.034Z",
+      "input": {
+        "order_id": "BK-10571",
+        "reason": "I no longer want the book"
+      },
+      "output": {
+        "error": "Order BK-10571 is not eligible for return because its status is processing."
+      },
+      "metadata": {
+        "temperature": 0.7,
+        "run": 1,
+        "experiment": "before-after-2026-11",
+        "agent_variant": "flawed",
+        "scenario_id": "return_processing_order"
+      },
+      "model": "",
+      "internalModelId": "",
+      "modelParameters": {},
+      "usageDetails": {},
+      "inputUsage": 0,
+      "outputUsage": 0,
+      "totalUsage": 0,
+      "costDetails": {},
+      "inputCost": null,
+      "outputCost": null,
+      "totalCost": null,
+      "usagePricingTierId": null,
+      "usagePricingTierName": null,
+      "latency": 0,
+      "timeToFirstToken": null,
+      "sessionId": "",
+      "isRootObservation": false,
+      "traceName": "bookstore-support",
+      "tags": [],
+      "bookmarked": false,
+      "public": false,
+      "modelId": null,
+      "inputPrice": null,
+      "outputPrice": null,
+      "totalPrice": null
+    }
+  ],
+  "scores": [
+    {
+      "id": "711c81c65039fc04",
+      "name": "expected_tool_check",
+      "source": "API",
+      "timestamp": "2026-11-26T19:08:40.805Z",
+      "environment": "default",
+      "createdAt": "2026-11-26T19:08:43.000Z",
+      "updatedAt": "2026-11-26T19:08:42.803Z",
+      "comment": "automated check by run_demo.py: expected first tool start_return, got start_return",
+      "configId": null,
+      "metadata": {},
+      "subject": {
+        "kind": "trace",
+        "id": "2acb43247bada25fa369a084e070ae00"
+      },
+      "dataType": "NUMERIC",
+      "value": 1,
+      "traceId": "2acb43247bada25fa369a084e070ae00"
+    }
+  ],
+  "reconstructedFrom": "GET /api/public/v2/observations (no trace-level fields in v2; name/input/output/metadata taken from the root observation)"
+}
