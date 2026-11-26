@@ -1,0 +1,528 @@
+{
+  "id": "7e85ebb7c8ea80fe2677b707eb53fb84",
+  "timestamp": "2026-11-26T18:54:34.943Z",
+  "name": "bookstore-support",
+  "input": "Is Dune by Frank Herbert a good book for a 14 year old?",
+  "output": "I couldn't find any information on a book called \"Dune\" by Frank Herbert that is specifically recommended for a 14-year-old. However, I can tell you that \"Dune\" is a classic science fiction novel written by Frank Herbert, published in 1965. It's a complex and thought-provoking book that deals with mature themes such as politics, ecology, and human nature.\n\nWhile some 14-year-olds may be able to handle the complexity of \"Dune\", others may find it too dense or difficult to follow. I would recommend checking out reviews and summaries of the book to determine if it's suitable for a 14-year-old's reading level and interests.\n\nIf you're looking for book recommendations for a 14-year-old, I'd be happy to provide some suggestions. Can you tell me a bit more about what type of books your child is interested in?",
+  "metadata": {
+    "temperature": 0,
+    "run": 2,
+    "experiment": "before-after-2026-11",
+    "agent_variant": "fixed",
+    "scenario_id": "unneeded_lookup"
+  },
+  "tags": [],
+  "sessionId": null,
+  "environment": "default",
+  "observations": [
+    {
+      "id": "54ecd70b86372574",
+      "traceId": "7e85ebb7c8ea80fe2677b707eb53fb84",
+      "startTime": "2026-11-26T18:54:34.943Z",
+      "endTime": "2026-11-26T18:55:05.171Z",
+      "parentObservationId": null,
+      "type": "SPAN",
+      "name": "agent-run",
+      "level": "DEFAULT",
+      "statusMessage": "",
+      "environment": "default",
+      "completionStartTime": null,
+      "createdAt": "2026-11-26T18:55:05.851Z",
+      "updatedAt": "2026-11-26T18:55:05.851Z",
+      "input": "Is Dune by Frank Herbert a good book for a 14 year old?",
+      "output": "I couldn't find any information on a book called \"Dune\" by Frank Herbert that is specifically recommended for a 14-year-old. However, I can tell you that \"Dune\" is a classic science fiction novel written by Frank Herbert, published in 1965. It's a complex and thought-provoking book that deals with mature themes such as politics, ecology, and human nature.\n\nWhile some 14-year-olds may be able to handle the complexity of \"Dune\", others may find it too dense or difficult to follow. I would recommend checking out reviews and summaries of the book to determine if it's suitable for a 14-year-old's reading level and interests.\n\nIf you're looking for book recommendations for a 14-year-old, I'd be happy to provide some suggestions. Can you tell me a bit more about what type of books your child is interested in?",
+      "metadata": {
+        "temperature": 0,
+        "run": 2,
+        "experiment": "before-after-2026-11",
+        "agent_variant": "fixed",
+        "scenario_id": "unneeded_lookup"
+      },
+      "model": "",
+      "internalModelId": "",
+      "modelParameters": {},
+      "usageDetails": {},
+      "inputUsage": 0,
+      "outputUsage": 0,
+      "totalUsage": 0,
+      "costDetails": {},
+      "inputCost": null,
+      "outputCost": null,
+      "totalCost": null,
+      "usagePricingTierId": null,
+      "usagePricingTierName": null,
+      "latency": 30.228,
+      "timeToFirstToken": null,
+      "sessionId": "",
+      "isRootObservation": true,
+      "traceName": "bookstore-support",
+      "tags": [],
+      "bookmarked": false,
+      "public": false,
+      "modelId": null,
+      "inputPrice": null,
+      "outputPrice": null,
+      "totalPrice": null
+    },
+    {
+      "id": "2811959def402f45",
+      "traceId": "7e85ebb7c8ea80fe2677b707eb53fb84",
+      "startTime": "2026-11-26T18:54:34.943Z",
+      "endTime": "2026-11-26T18:54:41.901Z",
+      "parentObservationId": "54ecd70b86372574",
+      "type": "GENERATION",
+      "name": "llm-call-1",
+      "level": "DEFAULT",
+      "statusMessage": "",
+      "environment": "default",
+      "completionStartTime": null,
+      "createdAt": "2026-11-26T18:54:43.244Z",
+      "updatedAt": "2026-11-26T18:54:43.244Z",
+      "input": {
+        "messages": [
+          {
+            "role": "system",
+            "content": "You are a customer support assistant for an online bookstore. Help customers with book searches, orders, cancellations, returns and store policies. Be concise and polite."
+          },
+          {
+            "role": "user",
+            "content": "Is Dune by Frank Herbert a good book for a 14 year old?"
+          }
+        ],
+        "tools": [
+          {
+            "type": "function",
+            "function": {
+              "name": "search_books",
+              "description": "Search the bookstore catalog by title, author or ISBN. Returns up to five matching books with ISBN, title, author, price in USD and the number of copies in stock.",
+              "parameters": {
+                "type": "object",
+                "properties": {
+                  "query": {
+                    "type": "string",
+                    "description": "A title, author name or ISBN to search for."
+                  }
+                },
+                "required": [
+                  "query"
+                ]
+              }
+            }
+          },
+          {
+            "type": "function",
+            "function": {
+              "name": "get_order_status",
+              "description": "Look up an order and return its status, items and key dates.",
+              "parameters": {
+                "type": "object",
+                "properties": {
+                  "order_id": {
+                    "type": "string",
+                    "description": "The order ID. Format: BK- followed by 5 digits, e.g. BK-10571."
+                  }
+                },
+                "required": [
+                  "order_id"
+                ]
+              }
+            }
+          },
+          {
+            "type": "function",
+            "function": {
+              "name": "cancel_order",
+              "description": "Undo an order. Use this when the customer wants to reverse or back out of an order they placed.",
+              "parameters": {
+                "type": "object",
+                "properties": {
+                  "order_id": {
+                    "type": "string",
+                    "description": "The order ID. Format: BK- followed by 5 digits, e.g. BK-10571."
+                  }
+                },
+                "required": [
+                  "order_id"
+                ]
+              }
+            }
+          },
+          {
+            "type": "function",
+            "function": {
+              "name": "start_return",
+              "description": "Reverse an order. Use this when the customer wants to undo a purchase and get their money back.",
+              "parameters": {
+                "type": "object",
+                "properties": {
+                  "order_id": {
+                    "type": "string",
+                    "description": "The order ID. Format: BK- followed by 5 digits, e.g. BK-10571."
+                  },
+                  "reason": {
+                    "type": "string",
+                    "description": "Why the customer wants to return the order."
+                  }
+                },
+                "required": [
+                  "order_id"
+                ]
+              }
+            }
+          },
+          {
+            "type": "function",
+            "function": {
+              "name": "get_store_policy",
+              "description": "Return the official store policy text for one topic: returns, shipping or cancellations. Use it for questions about how the store's rules work rather than about a specific order.",
+              "parameters": {
+                "type": "object",
+                "properties": {
+                  "topic": {
+                    "type": "string",
+                    "enum": [
+                      "returns",
+                      "shipping",
+                      "cancellations"
+                    ],
+                    "description": "The policy topic to look up."
+                  }
+                },
+                "required": [
+                  "topic"
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "output": {
+        "role": "assistant",
+        "content": "",
+        "tool_calls": [
+          {
+            "id": "call_2u0mnocg",
+            "type": "function",
+            "function": {
+              "name": "search_books",
+              "arguments": "{\"query\":\"Dune by Frank Herbert\"}"
+            }
+          }
+        ]
+      },
+      "metadata": {
+        "temperature": 0,
+        "run": 2,
+        "experiment": "before-after-2026-11",
+        "agent_variant": "fixed",
+        "scenario_id": "unneeded_lookup",
+        "finish_reason": "tool_calls"
+      },
+      "model": "llama3.2:3b",
+      "internalModelId": "",
+      "modelParameters": {
+        "temperature": 0,
+        "max_tokens": 4096
+      },
+      "usageDetails": {
+        "input": 585,
+        "output": 17,
+        "total": 602
+      },
+      "inputUsage": 585,
+      "outputUsage": 17,
+      "totalUsage": 602,
+      "costDetails": {},
+      "inputCost": null,
+      "outputCost": null,
+      "totalCost": null,
+      "usagePricingTierId": null,
+      "usagePricingTierName": null,
+      "latency": 6.958,
+      "timeToFirstToken": null,
+      "sessionId": "",
+      "isRootObservation": false,
+      "traceName": "bookstore-support",
+      "tags": [],
+      "bookmarked": false,
+      "public": false,
+      "modelId": null,
+      "inputPrice": null,
+      "outputPrice": null,
+      "totalPrice": null
+    },
+    {
+      "id": "13e90c708b40f524",
+      "traceId": "7e85ebb7c8ea80fe2677b707eb53fb84",
+      "startTime": "2026-11-26T18:54:41.901Z",
+      "endTime": "2026-11-26T18:54:41.902Z",
+      "parentObservationId": "54ecd70b86372574",
+      "type": "TOOL",
+      "name": "tool:search_books",
+      "level": "DEFAULT",
+      "statusMessage": "",
+      "environment": "default",
+      "completionStartTime": null,
+      "createdAt": "2026-11-26T18:54:43.244Z",
+      "updatedAt": "2026-11-26T18:54:43.244Z",
+      "input": {
+        "query": "Dune by Frank Herbert"
+      },
+      "output": {
+        "query": "Dune by Frank Herbert",
+        "results": [],
+        "count": 0
+      },
+      "metadata": {
+        "temperature": 0,
+        "run": 2,
+        "experiment": "before-after-2026-11",
+        "agent_variant": "fixed",
+        "scenario_id": "unneeded_lookup"
+      },
+      "model": "",
+      "internalModelId": "",
+      "modelParameters": {},
+      "usageDetails": {},
+      "inputUsage": 0,
+      "outputUsage": 0,
+      "totalUsage": 0,
+      "costDetails": {},
+      "inputCost": null,
+      "outputCost": null,
+      "totalCost": null,
+      "usagePricingTierId": null,
+      "usagePricingTierName": null,
+      "latency": 0.001,
+      "timeToFirstToken": null,
+      "sessionId": "",
+      "isRootObservation": false,
+      "traceName": "bookstore-support",
+      "tags": [],
+      "bookmarked": false,
+      "public": false,
+      "modelId": null,
+      "inputPrice": null,
+      "outputPrice": null,
+      "totalPrice": null
+    },
+    {
+      "id": "e35e6b3e2a6c48dd",
+      "traceId": "7e85ebb7c8ea80fe2677b707eb53fb84",
+      "startTime": "2026-11-26T18:54:41.902Z",
+      "endTime": "2026-11-26T18:55:05.171Z",
+      "parentObservationId": "54ecd70b86372574",
+      "type": "GENERATION",
+      "name": "llm-call-2",
+      "level": "DEFAULT",
+      "statusMessage": "",
+      "environment": "default",
+      "completionStartTime": null,
+      "createdAt": "2026-11-26T18:55:05.851Z",
+      "updatedAt": "2026-11-26T18:55:05.851Z",
+      "input": {
+        "messages": [
+          {
+            "role": "system",
+            "content": "You are a customer support assistant for an online bookstore. Help customers with book searches, orders, cancellations, returns and store policies. Be concise and polite."
+          },
+          {
+            "role": "user",
+            "content": "Is Dune by Frank Herbert a good book for a 14 year old?"
+          },
+          {
+            "role": "assistant",
+            "content": "",
+            "tool_calls": [
+              {
+                "id": "call_2u0mnocg",
+                "type": "function",
+                "function": {
+                  "name": "search_books",
+                  "arguments": "{\"query\":\"Dune by Frank Herbert\"}"
+                }
+              }
+            ]
+          },
+          {
+            "role": "tool",
+            "tool_call_id": "call_2u0mnocg",
+            "content": "{\"query\": \"Dune by Frank Herbert\", \"results\": [], \"count\": 0}"
+          }
+        ],
+        "tools": [
+          {
+            "type": "function",
+            "function": {
+              "name": "search_books",
+              "description": "Search the bookstore catalog by title, author or ISBN. Returns up to five matching books with ISBN, title, author, price in USD and the number of copies in stock.",
+              "parameters": {
+                "type": "object",
+                "properties": {
+                  "query": {
+                    "type": "string",
+                    "description": "A title, author name or ISBN to search for."
+                  }
+                },
+                "required": [
+                  "query"
+                ]
+              }
+            }
+          },
+          {
+            "type": "function",
+            "function": {
+              "name": "get_order_status",
+              "description": "Look up an order and return its status, items and key dates.",
+              "parameters": {
+                "type": "object",
+                "properties": {
+                  "order_id": {
+                    "type": "string",
+                    "description": "The order ID. Format: BK- followed by 5 digits, e.g. BK-10571."
+                  }
+                },
+                "required": [
+                  "order_id"
+                ]
+              }
+            }
+          },
+          {
+            "type": "function",
+            "function": {
+              "name": "cancel_order",
+              "description": "Undo an order. Use this when the customer wants to reverse or back out of an order they placed.",
+              "parameters": {
+                "type": "object",
+                "properties": {
+                  "order_id": {
+                    "type": "string",
+                    "description": "The order ID. Format: BK- followed by 5 digits, e.g. BK-10571."
+                  }
+                },
+                "required": [
+                  "order_id"
+                ]
+              }
+            }
+          },
+          {
+            "type": "function",
+            "function": {
+              "name": "start_return",
+              "description": "Reverse an order. Use this when the customer wants to undo a purchase and get their money back.",
+              "parameters": {
+                "type": "object",
+                "properties": {
+                  "order_id": {
+                    "type": "string",
+                    "description": "The order ID. Format: BK- followed by 5 digits, e.g. BK-10571."
+                  },
+                  "reason": {
+                    "type": "string",
+                    "description": "Why the customer wants to return the order."
+                  }
+                },
+                "required": [
+                  "order_id"
+                ]
+              }
+            }
+          },
+          {
+            "type": "function",
+            "function": {
+              "name": "get_store_policy",
+              "description": "Return the official store policy text for one topic: returns, shipping or cancellations. Use it for questions about how the store's rules work rather than about a specific order.",
+              "parameters": {
+                "type": "object",
+                "properties": {
+                  "topic": {
+                    "type": "string",
+                    "enum": [
+                      "returns",
+                      "shipping",
+                      "cancellations"
+                    ],
+                    "description": "The policy topic to look up."
+                  }
+                },
+                "required": [
+                  "topic"
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "output": {
+        "role": "assistant",
+        "content": "I couldn't find any information on a book called \"Dune\" by Frank Herbert that is specifically recommended for a 14-year-old. However, I can tell you that \"Dune\" is a classic science fiction novel written by Frank Herbert, published in 1965. It's a complex and thought-provoking book that deals with mature themes such as politics, ecology, and human nature.\n\nWhile some 14-year-olds may be able to handle the complexity of \"Dune\", others may find it too dense or difficult to follow. I would recommend checking out reviews and summaries of the book to determine if it's suitable for a 14-year-old's reading level and interests.\n\nIf you're looking for book recommendations for a 14-year-old, I'd be happy to provide some suggestions. Can you tell me a bit more about what type of books your child is interested in?"
+      },
+      "metadata": {
+        "temperature": 0,
+        "run": 2,
+        "experiment": "before-after-2026-11",
+        "agent_variant": "fixed",
+        "scenario_id": "unneeded_lookup",
+        "finish_reason": "stop"
+      },
+      "model": "llama3.2:3b",
+      "internalModelId": "",
+      "modelParameters": {
+        "temperature": 0,
+        "max_tokens": 4096
+      },
+      "usageDetails": {
+        "input": 154,
+        "output": 181,
+        "total": 335
+      },
+      "inputUsage": 154,
+      "outputUsage": 181,
+      "totalUsage": 335,
+      "costDetails": {},
+      "inputCost": null,
+      "outputCost": null,
+      "totalCost": null,
+      "usagePricingTierId": null,
+      "usagePricingTierName": null,
+      "latency": 23.269,
+      "timeToFirstToken": null,
+      "sessionId": "",
+      "isRootObservation": false,
+      "traceName": "bookstore-support",
+      "tags": [],
+      "bookmarked": false,
+      "public": false,
+      "modelId": null,
+      "inputPrice": null,
+      "outputPrice": null,
+      "totalPrice": null
+    }
+  ],
+  "scores": [
+    {
+      "id": "81fa90d7a1cf7356",
+      "name": "expected_tool_check",
+      "source": "API",
+      "timestamp": "2026-11-26T18:55:05.171Z",
+      "environment": "default",
+      "createdAt": "2026-11-26T18:55:08.000Z",
+      "updatedAt": "2026-11-26T18:55:07.282Z",
+      "comment": "automated check by run_demo.py: expected first tool none, got search_books",
+      "configId": null,
+      "metadata": {},
+      "subject": {
+        "kind": "trace",
+        "id": "7e85ebb7c8ea80fe2677b707eb53fb84"
+      },
+      "dataType": "NUMERIC",
+      "value": 0,
+      "traceId": "7e85ebb7c8ea80fe2677b707eb53fb84"
+    }
+  ],
+  "reconstructedFrom": "GET /api/public/v2/observations (no trace-level fields in v2; name/input/output/metadata taken from the root observation)"
+}

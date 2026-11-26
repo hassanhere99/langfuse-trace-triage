@@ -1,0 +1,527 @@
+{
+  "id": "23f728a956dd829378b08397aef3082e",
+  "timestamp": "2026-11-26T18:45:40.499Z",
+  "name": "bookstore-support",
+  "input": "How many days do I have to return a book?",
+  "output": "You have 30 days from the date of delivery to return a book. The book must be in its original condition, and returns can only be started for orders that have been delivered. Refunds will be processed within 5 to 7 business days after we receive the returned book, and will be credited back to the original payment method.",
+  "metadata": {
+    "temperature": 0,
+    "run": 1,
+    "experiment": "before-after-2026-11",
+    "agent_variant": "flawed",
+    "scenario_id": "return_window_from_memory"
+  },
+  "tags": [],
+  "sessionId": null,
+  "environment": "default",
+  "observations": [
+    {
+      "id": "b47f53ab9d8210cb",
+      "traceId": "23f728a956dd829378b08397aef3082e",
+      "startTime": "2026-11-26T18:45:40.499Z",
+      "endTime": "2026-11-26T18:45:52.296Z",
+      "parentObservationId": null,
+      "type": "SPAN",
+      "name": "agent-run",
+      "level": "DEFAULT",
+      "statusMessage": "",
+      "environment": "default",
+      "completionStartTime": null,
+      "createdAt": "2026-11-26T18:45:53.311Z",
+      "updatedAt": "2026-11-26T18:45:53.311Z",
+      "input": "How many days do I have to return a book?",
+      "output": "You have 30 days from the date of delivery to return a book. The book must be in its original condition, and returns can only be started for orders that have been delivered. Refunds will be processed within 5 to 7 business days after we receive the returned book, and will be credited back to the original payment method.",
+      "metadata": {
+        "temperature": 0,
+        "run": 1,
+        "experiment": "before-after-2026-11",
+        "agent_variant": "flawed",
+        "scenario_id": "return_window_from_memory"
+      },
+      "model": "",
+      "internalModelId": "",
+      "modelParameters": {},
+      "usageDetails": {},
+      "inputUsage": 0,
+      "outputUsage": 0,
+      "totalUsage": 0,
+      "costDetails": {},
+      "inputCost": null,
+      "outputCost": null,
+      "totalCost": null,
+      "usagePricingTierId": null,
+      "usagePricingTierName": null,
+      "latency": 11.797,
+      "timeToFirstToken": null,
+      "sessionId": "",
+      "isRootObservation": true,
+      "traceName": "bookstore-support",
+      "tags": [],
+      "bookmarked": false,
+      "public": false,
+      "modelId": null,
+      "inputPrice": null,
+      "outputPrice": null,
+      "totalPrice": null
+    },
+    {
+      "id": "17e61ece2252e55a",
+      "traceId": "23f728a956dd829378b08397aef3082e",
+      "startTime": "2026-11-26T18:45:40.499Z",
+      "endTime": "2026-11-26T18:45:42.340Z",
+      "parentObservationId": "b47f53ab9d8210cb",
+      "type": "GENERATION",
+      "name": "llm-call-1",
+      "level": "DEFAULT",
+      "statusMessage": "",
+      "environment": "default",
+      "completionStartTime": null,
+      "createdAt": "2026-11-26T18:45:43.864Z",
+      "updatedAt": "2026-11-26T18:45:43.864Z",
+      "input": {
+        "messages": [
+          {
+            "role": "system",
+            "content": "You are a customer support assistant for an online bookstore. Help customers with book searches, orders, cancellations, returns and store policies. Be concise and polite."
+          },
+          {
+            "role": "user",
+            "content": "How many days do I have to return a book?"
+          }
+        ],
+        "tools": [
+          {
+            "type": "function",
+            "function": {
+              "name": "search_books",
+              "description": "Search the bookstore catalog by title, author or ISBN. Returns up to five matching books with ISBN, title, author, price in USD and the number of copies in stock.",
+              "parameters": {
+                "type": "object",
+                "properties": {
+                  "query": {
+                    "type": "string",
+                    "description": "A title, author name or ISBN to search for."
+                  }
+                },
+                "required": [
+                  "query"
+                ]
+              }
+            }
+          },
+          {
+            "type": "function",
+            "function": {
+              "name": "get_order_status",
+              "description": "Look up an order and return its status, items and key dates.",
+              "parameters": {
+                "type": "object",
+                "properties": {
+                  "order_id": {
+                    "type": "string",
+                    "description": "The order ID"
+                  }
+                },
+                "required": [
+                  "order_id"
+                ]
+              }
+            }
+          },
+          {
+            "type": "function",
+            "function": {
+              "name": "cancel_order",
+              "description": "Undo an order. Use this when the customer wants to reverse or back out of an order they placed.",
+              "parameters": {
+                "type": "object",
+                "properties": {
+                  "order_id": {
+                    "type": "string",
+                    "description": "The order ID"
+                  }
+                },
+                "required": [
+                  "order_id"
+                ]
+              }
+            }
+          },
+          {
+            "type": "function",
+            "function": {
+              "name": "start_return",
+              "description": "Reverse an order. Use this when the customer wants to undo a purchase and get their money back.",
+              "parameters": {
+                "type": "object",
+                "properties": {
+                  "order_id": {
+                    "type": "string",
+                    "description": "The order ID"
+                  },
+                  "reason": {
+                    "type": "string",
+                    "description": "Why the customer wants to return the order."
+                  }
+                },
+                "required": [
+                  "order_id"
+                ]
+              }
+            }
+          },
+          {
+            "type": "function",
+            "function": {
+              "name": "get_store_policy",
+              "description": "Return the official store policy text for one topic: returns, shipping or cancellations. Use it for questions about how the store's rules work rather than about a specific order.",
+              "parameters": {
+                "type": "object",
+                "properties": {
+                  "topic": {
+                    "type": "string",
+                    "enum": [
+                      "returns",
+                      "shipping",
+                      "cancellations"
+                    ],
+                    "description": "The policy topic to look up."
+                  }
+                },
+                "required": [
+                  "topic"
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "output": {
+        "role": "assistant",
+        "content": "",
+        "tool_calls": [
+          {
+            "id": "call_v4klswgq",
+            "type": "function",
+            "function": {
+              "name": "get_store_policy",
+              "arguments": "{\"topic\":\"returns\"}"
+            }
+          }
+        ]
+      },
+      "metadata": {
+        "temperature": 0,
+        "run": 1,
+        "experiment": "before-after-2026-11",
+        "agent_variant": "flawed",
+        "scenario_id": "return_window_from_memory",
+        "finish_reason": "tool_calls"
+      },
+      "model": "llama3.2:3b",
+      "internalModelId": "",
+      "modelParameters": {
+        "temperature": 0,
+        "max_tokens": 4096
+      },
+      "usageDetails": {
+        "input": 523,
+        "output": 14,
+        "total": 537
+      },
+      "inputUsage": 523,
+      "outputUsage": 14,
+      "totalUsage": 537,
+      "costDetails": {},
+      "inputCost": null,
+      "outputCost": null,
+      "totalCost": null,
+      "usagePricingTierId": null,
+      "usagePricingTierName": null,
+      "latency": 1.841,
+      "timeToFirstToken": null,
+      "sessionId": "",
+      "isRootObservation": false,
+      "traceName": "bookstore-support",
+      "tags": [],
+      "bookmarked": false,
+      "public": false,
+      "modelId": null,
+      "inputPrice": null,
+      "outputPrice": null,
+      "totalPrice": null
+    },
+    {
+      "id": "820ac16bb660eb31",
+      "traceId": "23f728a956dd829378b08397aef3082e",
+      "startTime": "2026-11-26T18:45:42.340Z",
+      "endTime": "2026-11-26T18:45:42.340Z",
+      "parentObservationId": "b47f53ab9d8210cb",
+      "type": "TOOL",
+      "name": "tool:get_store_policy",
+      "level": "DEFAULT",
+      "statusMessage": "",
+      "environment": "default",
+      "completionStartTime": null,
+      "createdAt": "2026-11-26T18:45:43.864Z",
+      "updatedAt": "2026-11-26T18:45:43.864Z",
+      "input": {
+        "topic": "returns"
+      },
+      "output": {
+        "topic": "returns",
+        "policy": "Books can be returned within 30 days of delivery if they are in their original condition. Returns can only be started for orders that have been delivered. Refunds go to the original payment method within 5 to 7 business days after we receive the book."
+      },
+      "metadata": {
+        "temperature": 0,
+        "run": 1,
+        "experiment": "before-after-2026-11",
+        "agent_variant": "flawed",
+        "scenario_id": "return_window_from_memory"
+      },
+      "model": "",
+      "internalModelId": "",
+      "modelParameters": {},
+      "usageDetails": {},
+      "inputUsage": 0,
+      "outputUsage": 0,
+      "totalUsage": 0,
+      "costDetails": {},
+      "inputCost": null,
+      "outputCost": null,
+      "totalCost": null,
+      "usagePricingTierId": null,
+      "usagePricingTierName": null,
+      "latency": 0,
+      "timeToFirstToken": null,
+      "sessionId": "",
+      "isRootObservation": false,
+      "traceName": "bookstore-support",
+      "tags": [],
+      "bookmarked": false,
+      "public": false,
+      "modelId": null,
+      "inputPrice": null,
+      "outputPrice": null,
+      "totalPrice": null
+    },
+    {
+      "id": "56beca3fd1ca557d",
+      "traceId": "23f728a956dd829378b08397aef3082e",
+      "startTime": "2026-11-26T18:45:42.340Z",
+      "endTime": "2026-11-26T18:45:52.296Z",
+      "parentObservationId": "b47f53ab9d8210cb",
+      "type": "GENERATION",
+      "name": "llm-call-2",
+      "level": "DEFAULT",
+      "statusMessage": "",
+      "environment": "default",
+      "completionStartTime": null,
+      "createdAt": "2026-11-26T18:45:53.311Z",
+      "updatedAt": "2026-11-26T18:45:53.311Z",
+      "input": {
+        "messages": [
+          {
+            "role": "system",
+            "content": "You are a customer support assistant for an online bookstore. Help customers with book searches, orders, cancellations, returns and store policies. Be concise and polite."
+          },
+          {
+            "role": "user",
+            "content": "How many days do I have to return a book?"
+          },
+          {
+            "role": "assistant",
+            "content": "",
+            "tool_calls": [
+              {
+                "id": "call_v4klswgq",
+                "type": "function",
+                "function": {
+                  "name": "get_store_policy",
+                  "arguments": "{\"topic\":\"returns\"}"
+                }
+              }
+            ]
+          },
+          {
+            "role": "tool",
+            "tool_call_id": "call_v4klswgq",
+            "content": "{\"topic\": \"returns\", \"policy\": \"Books can be returned within 30 days of delivery if they are in their original condition. Returns can only be started for orders that have been delivered. Refunds go to the original payment method within 5 to 7 business days after we receive the book.\"}"
+          }
+        ],
+        "tools": [
+          {
+            "type": "function",
+            "function": {
+              "name": "search_books",
+              "description": "Search the bookstore catalog by title, author or ISBN. Returns up to five matching books with ISBN, title, author, price in USD and the number of copies in stock.",
+              "parameters": {
+                "type": "object",
+                "properties": {
+                  "query": {
+                    "type": "string",
+                    "description": "A title, author name or ISBN to search for."
+                  }
+                },
+                "required": [
+                  "query"
+                ]
+              }
+            }
+          },
+          {
+            "type": "function",
+            "function": {
+              "name": "get_order_status",
+              "description": "Look up an order and return its status, items and key dates.",
+              "parameters": {
+                "type": "object",
+                "properties": {
+                  "order_id": {
+                    "type": "string",
+                    "description": "The order ID"
+                  }
+                },
+                "required": [
+                  "order_id"
+                ]
+              }
+            }
+          },
+          {
+            "type": "function",
+            "function": {
+              "name": "cancel_order",
+              "description": "Undo an order. Use this when the customer wants to reverse or back out of an order they placed.",
+              "parameters": {
+                "type": "object",
+                "properties": {
+                  "order_id": {
+                    "type": "string",
+                    "description": "The order ID"
+                  }
+                },
+                "required": [
+                  "order_id"
+                ]
+              }
+            }
+          },
+          {
+            "type": "function",
+            "function": {
+              "name": "start_return",
+              "description": "Reverse an order. Use this when the customer wants to undo a purchase and get their money back.",
+              "parameters": {
+                "type": "object",
+                "properties": {
+                  "order_id": {
+                    "type": "string",
+                    "description": "The order ID"
+                  },
+                  "reason": {
+                    "type": "string",
+                    "description": "Why the customer wants to return the order."
+                  }
+                },
+                "required": [
+                  "order_id"
+                ]
+              }
+            }
+          },
+          {
+            "type": "function",
+            "function": {
+              "name": "get_store_policy",
+              "description": "Return the official store policy text for one topic: returns, shipping or cancellations. Use it for questions about how the store's rules work rather than about a specific order.",
+              "parameters": {
+                "type": "object",
+                "properties": {
+                  "topic": {
+                    "type": "string",
+                    "enum": [
+                      "returns",
+                      "shipping",
+                      "cancellations"
+                    ],
+                    "description": "The policy topic to look up."
+                  }
+                },
+                "required": [
+                  "topic"
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "output": {
+        "role": "assistant",
+        "content": "You have 30 days from the date of delivery to return a book. The book must be in its original condition, and returns can only be started for orders that have been delivered. Refunds will be processed within 5 to 7 business days after we receive the returned book, and will be credited back to the original payment method."
+      },
+      "metadata": {
+        "temperature": 0,
+        "run": 1,
+        "experiment": "before-after-2026-11",
+        "agent_variant": "flawed",
+        "scenario_id": "return_window_from_memory",
+        "finish_reason": "stop"
+      },
+      "model": "llama3.2:3b",
+      "internalModelId": "",
+      "modelParameters": {
+        "temperature": 0,
+        "max_tokens": 4096
+      },
+      "usageDetails": {
+        "input": 189,
+        "output": 69,
+        "total": 258
+      },
+      "inputUsage": 189,
+      "outputUsage": 69,
+      "totalUsage": 258,
+      "costDetails": {},
+      "inputCost": null,
+      "outputCost": null,
+      "totalCost": null,
+      "usagePricingTierId": null,
+      "usagePricingTierName": null,
+      "latency": 9.956,
+      "timeToFirstToken": null,
+      "sessionId": "",
+      "isRootObservation": false,
+      "traceName": "bookstore-support",
+      "tags": [],
+      "bookmarked": false,
+      "public": false,
+      "modelId": null,
+      "inputPrice": null,
+      "outputPrice": null,
+      "totalPrice": null
+    }
+  ],
+  "scores": [
+    {
+      "id": "71fdb81b38a7841c",
+      "name": "expected_tool_check",
+      "source": "API",
+      "timestamp": "2026-11-26T18:45:52.296Z",
+      "environment": "default",
+      "createdAt": "2026-11-26T18:45:55.000Z",
+      "updatedAt": "2026-11-26T18:45:54.292Z",
+      "comment": "automated check by run_demo.py: expected first tool get_store_policy, got get_store_policy",
+      "configId": null,
+      "metadata": {},
+      "subject": {
+        "kind": "trace",
+        "id": "23f728a956dd829378b08397aef3082e"
+      },
+      "dataType": "NUMERIC",
+      "value": 1,
+      "traceId": "23f728a956dd829378b08397aef3082e"
+    }
+  ],
+  "reconstructedFrom": "GET /api/public/v2/observations (no trace-level fields in v2; name/input/output/metadata taken from the root observation)"
+}
