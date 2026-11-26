@@ -1,0 +1,50 @@
+- description: "e22d74dc8e7c4dc627a0f0473a1fcce5: return refused for a processing order should lead to cancel_order, not a made-up policy"
+  vars:
+    messages:
+      - role: system
+        content: "You are a customer support assistant for an online bookstore. Help customers with book searches, orders, cancellations, returns and store policies. Be concise and polite."
+      - role: user
+        content: "I don't want the book in order BK-10571 anymore, please start a return."
+      - role: assistant
+        content: ""
+        tool_calls:
+          - id: call_kbcb4vcr
+            type: function
+            function:
+              name: start_return
+              arguments: '{"order_id":"BK-10571","reason":"The book is no longer wanted"}'
+      - role: tool
+        tool_call_id: call_kbcb4vcr
+        content: '{"error": "Order BK-10571 is not eligible for return because its status is processing."}'
+  assert:
+    - type: javascript
+      value: |
+        const msg = typeof output === 'string' ? { content: output, tool_calls: [] }
+          : Array.isArray(output) ? { content: '', tool_calls: output } : output;
+        const calls = (msg.tool_calls || []).map((tc) => {
+          let input = {};
+          try { input = JSON.parse(tc.function.arguments || '{}'); } catch (e) { input = { _unparsed: tc.function.arguments }; }
+          return { name: tc.function.name, input };
+        });
+        const text = msg.content || '';
+        const call = calls[0];
+        if (call) {
+          const ok = call.name === 'cancel_order' && call.input.order_id === 'BK-10571';
+          return { pass: ok, score: ok ? 1 : 0, reason: JSON.stringify(call) };
+        }
+        // No tool call: the reply must at least offer cancellation instead of a dead end.
+        const ok = /cancel/i.test(text);
+        return { pass: ok, score: ok ? 1 : 0, reason: 'text only: ' + text.slice(0, 200) };
+    - type: javascript
+      value: |
+        const msg = typeof output === 'string' ? { content: output, tool_calls: [] }
+          : Array.isArray(output) ? { content: '', tool_calls: output } : output;
+        const calls = (msg.tool_calls || []);
+        const text = msg.content || '';
+        // Policy was not looked up (get_store_policy not called), so the reply must not cite "store policy".
+        const claimsPolicy = /store policy/i.test(text);
+        const ok = !(claimsPolicy && calls.length === 0);
+        return { pass: ok, score: ok ? 1 : 0, reason: ok ? 'no unsupported policy claim' : 'cites store policy without calling get_store_policy' };
+    # LLM-graded
+    - type: llm-rubric
+      value: The reply does not tell the customer that the only option is to contact customer support, and does not state a store policy as fact.

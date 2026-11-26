@@ -1,0 +1,38 @@
+- description: "21e9b07f: after an 'Invalid order_id' error the reply must not say the order was not found"
+  vars:
+    messages:
+      - role: system
+        content: "You are a customer support assistant for an online bookstore. Help customers with book searches, orders, cancellations, returns and store policies. Be concise and polite."
+      - role: user
+        content: "Please cancel order 10571."
+      - role: assistant
+        content: ""
+        tool_calls:
+          - id: call_c5p7onts
+            type: function
+            function:
+              name: cancel_order
+              arguments: '{"order_id":"10571"}'
+      - role: tool
+        tool_call_id: call_c5p7onts
+        content: '{"error": "Invalid order_id: \"10571\""}'
+  assert:
+    - type: javascript
+      value: |
+        const msg = typeof output === 'string' ? { content: output, tool_calls: [] }
+          : Array.isArray(output) ? { content: '', tool_calls: output } : output;
+        const calls = (msg.tool_calls || []).map((tc) => {
+          let input = {};
+          try { input = JSON.parse(tc.function.arguments || '{}'); } catch (e) { input = { _unparsed: tc.function.arguments }; }
+          return { name: tc.function.name, input };
+        });
+        const text = msg.content || '';
+        // The tool said the ID is invalid, not that the order does not exist.
+        const claimsNotFound = /(couldn['’]?t|could not|can['’]?t|cannot|unable to)\s+(locate|find)|not found|no (such )?order|doesn['’]?t exist|does not exist/i.test(text);
+        // Claiming the cancellation went through would also be wrong.
+        const claimsSuccess = /(has been|was|is now|successfully)\s+(cancel+ed|cancelled)/i.test(text);
+        const ok = !claimsNotFound && !claimsSuccess;
+        return { pass: ok, score: ok ? 1 : 0, reason: JSON.stringify({ text, calls }) };
+    # LLM-graded
+    - type: llm-rubric
+      value: The reply tells the customer that the order ID was rejected as invalid (or in the wrong format) and asks for the correct ID, rather than saying the order does not exist or could not be found.

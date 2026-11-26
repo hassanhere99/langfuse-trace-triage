@@ -1,0 +1,57 @@
+- description: "5abcaa27b52a372780e0cf5415850516: undo request must check order status before cancel_order or start_return"
+  vars:
+    messages:
+      - role: system
+        content: "You are a customer support assistant for an online bookstore. Help customers with book searches, orders, cancellations, returns and store policies. Be concise and polite."
+      - role: user
+        content: "I want to undo my order BK-10234."
+  assert:
+    - type: javascript
+      value: |
+        const msg = typeof output === 'string' ? { content: output, tool_calls: [] }
+          : Array.isArray(output) ? { content: '', tool_calls: output } : output;
+        const calls = (msg.tool_calls || []).map((tc) => {
+          let input = {};
+          try { input = JSON.parse(tc.function.arguments || '{}'); } catch (e) { input = { _unparsed: tc.function.arguments }; }
+          return { name: tc.function.name, input };
+        });
+        const call = calls[0];
+        if (!call) return { pass: false, score: 0, reason: 'no tool call in output' };
+        const ok = call.name === 'get_order_status' && call.input.order_id === 'BK-10234';
+        return { pass: ok, score: ok ? 1 : 0, reason: JSON.stringify(calls) };
+
+- description: "5abcaa27b52a372780e0cf5415850516: delivered order should go to start_return without an invented reason"
+  vars:
+    messages:
+      - role: system
+        content: "You are a customer support assistant for an online bookstore. Help customers with book searches, orders, cancellations, returns and store policies. Be concise and polite."
+      - role: user
+        content: "I want to undo my order BK-10234."
+      - role: assistant
+        content: ""
+        tool_calls:
+          - id: call_01
+            type: function
+            function:
+              name: get_order_status
+              arguments: '{"order_id": "BK-10234"}'
+      - role: tool
+        tool_call_id: call_01
+        # Tool result is illustrative: the trace has no get_order_status call. It stands for a delivered order.
+        content: '{"order_id": "BK-10234", "status": "delivered", "delivered_on": "2026-11-20"}'
+  assert:
+    - type: javascript
+      value: |
+        const msg = typeof output === 'string' ? { content: output, tool_calls: [] }
+          : Array.isArray(output) ? { content: '', tool_calls: output } : output;
+        const calls = (msg.tool_calls || []).map((tc) => {
+          let input = {};
+          try { input = JSON.parse(tc.function.arguments || '{}'); } catch (e) { input = { _unparsed: tc.function.arguments }; }
+          return { name: tc.function.name, input };
+        });
+        const call = calls[0];
+        if (!call) return { pass: false, score: 0, reason: 'no tool call in output' };
+        const reason = call.input.reason;
+        const reasonOk = reason === undefined || (typeof reason === 'string' && reason.trim() !== '' && !/^(none|null|n\/a|undefined)$/i.test(reason.trim()));
+        const ok = call.name === 'start_return' && call.input.order_id === 'BK-10234' && reasonOk;
+        return { pass: ok, score: ok ? 1 : 0, reason: JSON.stringify(call) };

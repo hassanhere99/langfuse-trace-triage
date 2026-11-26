@@ -1,0 +1,57 @@
+# Regression guards, not failure reproductions: the trace shows no defect in the
+# tool definitions or the agent's behaviour (see ../cb4b44236edf1e609ca4e2403d03ea67.md).
+- description: "cb4b44236edf1e609ca4e2403d03ea67 step 1: 'cancel order' request should call cancel_order with BK-10388"
+  vars:
+    messages:
+      - role: system
+        content: "You are a customer support assistant for an online bookstore. Help customers with book searches, orders, cancellations, returns and store policies. Be concise and polite."
+      - role: user
+        content: "Cancel order BK-10388, I changed my mind."
+  assert:
+    - type: javascript
+      value: |
+        const msg = typeof output === 'string' ? { content: output, tool_calls: [] }
+          : Array.isArray(output) ? { content: '', tool_calls: output } : output;
+        const calls = (msg.tool_calls || []).map((tc) => {
+          let input = {};
+          try { input = JSON.parse(tc.function.arguments || '{}'); } catch (e) { input = { _unparsed: tc.function.arguments }; }
+          return { name: tc.function.name, input };
+        });
+        const call = calls[0];
+        if (!call) return { pass: false, score: 0, reason: 'no tool call in output' };
+        const ok = call.name === 'cancel_order' && call.input.order_id === 'BK-10388';
+        return { pass: ok, score: ok ? 1 : 0, reason: JSON.stringify(call) };
+
+- description: "cb4b44236edf1e609ca4e2403d03ea67 step 2: after the 'has shipped' error, reply must not claim success or start a return"
+  vars:
+    messages:
+      - role: system
+        content: "You are a customer support assistant for an online bookstore. Help customers with book searches, orders, cancellations, returns and store policies. Be concise and polite."
+      - role: user
+        content: "Cancel order BK-10388, I changed my mind."
+      - role: assistant
+        content: ""
+        tool_calls:
+          - id: call_wn4miay7
+            type: function
+            function:
+              name: cancel_order
+              arguments: '{"order_id":"BK-10388"}'
+      - role: tool
+        tool_call_id: call_wn4miay7
+        content: '{"error": "Order BK-10388 has shipped, so it can''t be cancelled. A return can be started once it has been delivered."}'
+  assert:
+    - type: javascript
+      value: |
+        const msg = typeof output === 'string' ? { content: output, tool_calls: [] }
+          : Array.isArray(output) ? { content: '', tool_calls: output } : output;
+        const calls = (msg.tool_calls || []).map((tc) => {
+          let input = {};
+          try { input = JSON.parse(tc.function.arguments || '{}'); } catch (e) { input = { _unparsed: tc.function.arguments }; }
+          return { name: tc.function.name, input };
+        });
+        const text = (msg.content || '').toLowerCase();
+        if (calls.some((c) => c.name === 'start_return')) return { pass: false, score: 0, reason: 'started a return on a shipped order' };
+        if (/has been (successfully )?cancel+ed|is (now )?cancel+ed|i('ve| have) cancel+ed/.test(text)) return { pass: false, score: 0, reason: 'claims the order was cancelled' };
+        const ok = text.includes('shipped');
+        return { pass: ok, score: ok ? 1 : 0, reason: text.slice(0, 200) };

@@ -1,0 +1,39 @@
+- description: "dfd5ee0bc53db932f176cc788fc3b995: an 'Invalid order_id' error must not be reported to the customer as 'order not found'"
+  vars:
+    messages:
+      - role: system
+        content: "You are a customer support assistant for an online bookstore. Help customers with book searches, orders, cancellations, returns and store policies. Be concise and polite."
+      - role: user
+        content: "Please cancel order 10571."
+      - role: assistant
+        content: ""
+        tool_calls:
+          - id: call_8qu7rpmk
+            type: function
+            function:
+              name: cancel_order
+              arguments: '{"order_id":"10571"}'
+      - role: tool
+        tool_call_id: call_8qu7rpmk
+        # To check the server-side fix, replace this with the new error text.
+        content: '{"error": "Invalid order_id: \"10571\""}'
+  assert:
+    - type: javascript
+      value: |
+        const msg = typeof output === 'string' ? { content: output, tool_calls: [] }
+          : Array.isArray(output) ? { content: '', tool_calls: output } : output;
+        const calls = (msg.tool_calls || []).map((tc) => {
+          let input = {};
+          try { input = JSON.parse(tc.function.arguments || '{}'); } catch (e) { input = { _unparsed: tc.function.arguments }; }
+          return { name: tc.function.name, input };
+        });
+        const text = msg.content || '';
+        const repeated = calls.some((c) => c.name === 'cancel_order' && c.input.order_id === '10571');
+        if (repeated) return { pass: false, score: 0, reason: 'repeated the failing call unchanged' };
+        const saysNotFound = /couldn'?t (locate|find)|could ?not (locate|find)|not found|no (such )?order|doesn'?t exist|does not exist/i.test(text);
+        if (saysNotFound) return { pass: false, score: 0, reason: 'reports the order as not found: ' + text };
+        const saysInvalid = /invalid|format/i.test(text);
+        return { pass: saysInvalid, score: saysInvalid ? 1 : 0, reason: text };
+    # LLM-graded
+    - type: llm-rubric
+      value: The reply tells the customer that the order number was rejected as invalid or in the wrong format. It does not say the order does not exist or could not be found, and does not claim the order was cancelled.

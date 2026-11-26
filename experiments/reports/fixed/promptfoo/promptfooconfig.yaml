@@ -1,0 +1,21 @@
+description: Replay failing generations from Langfuse traces
+prompts:
+  - file://chat.json
+providers:
+  - id: openai:chat:{{ env.DEMO_MODEL }}
+    config:
+      apiBaseUrl: '{{ env.OPENAI_BASE_URL }}'
+      apiKey: '{{ env.OPENAI_API_KEY }}'
+      temperature: 0
+      max_tokens: 1024
+      tools: file://tools.json
+defaultTest:
+  options:
+    provider:
+      id: openai:chat:{{ env.DEMO_MODEL }}
+      config:
+        apiBaseUrl: '{{ env.OPENAI_BASE_URL }}'
+        apiKey: '{{ env.OPENAI_API_KEY }}'
+        temperature: 0
+tests:
+  - file://94621e1a245037d1047d280b076ce7e0.yaml

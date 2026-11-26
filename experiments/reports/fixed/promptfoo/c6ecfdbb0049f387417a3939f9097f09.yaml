@@ -1,0 +1,21 @@
+- description: "c6ecfdbb0049f387417a3939f9097f09: stock and price question should call search_books with the title (regression guard, no failure found)"
+  vars:
+    messages:
+      - role: system
+        content: "You are a customer support assistant for an online bookstore. Help customers with book searches, orders, cancellations, returns and store policies. Be concise and polite."
+      - role: user
+        content: "Do you have The Left Hand of Darkness in stock, and how much is it?"
+  assert:
+    - type: javascript
+      value: |
+        const msg = typeof output === 'string' ? { content: output, tool_calls: [] }
+          : Array.isArray(output) ? { content: '', tool_calls: output } : output;
+        const calls = (msg.tool_calls || []).map((tc) => {
+          let input = {};
+          try { input = JSON.parse(tc.function.arguments || '{}'); } catch (e) { input = { _unparsed: tc.function.arguments }; }
+          return { name: tc.function.name, input };
+        });
+        const call = calls[0];
+        if (!call) return { pass: false, score: 0, reason: 'no tool call in output' };
+        const ok = call.name === 'search_books' && /left hand of darkness/i.test(call.input.query || '');
+        return { pass: ok, score: ok ? 1 : 0, reason: JSON.stringify(call) };
