@@ -66,7 +66,7 @@ def test_experiment_tag():
 def _raw(variant, scenario, run, trace_id, **kw):
     base = {"variant": variant, "scenario": scenario, "run": run, "trace_id": trace_id, "elapsed_s": 1.0,
             "failure": False, "flaw_triggered": False, "note": "n", "tools": [], "tool_errors": 0,
-            "final_text": "t", "misleading_not_found": False}
+            "final_text": "t", "misleading_not_found": False, "tool_calls": []}
     base.update(kw)
     return base
 
@@ -121,3 +121,10 @@ def test_export_refuses_a_trace_with_a_leaked_key(tmp_path, monkeypatch, capsys)
     assert rx.do_export("t", {"out": out}) == 1
     assert not (out / "flawed").exists()
     assert "account-specific" in capsys.readouterr().err
+
+
+def test_settings_record_the_pinned_model_not_the_env_one():
+    """Regression: check_langfuse_project re-reads .env after the model is pinned; the runner must pin it again."""
+    import inspect
+    src = inspect.getsource(rx.do_runs)
+    assert src.index("describe(*get_projects())") < src.rindex('os.environ["DEMO_MODEL"] = MODEL') < src.index("settings_for(plan_name, plan)")

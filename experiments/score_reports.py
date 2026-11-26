@@ -40,6 +40,7 @@ FAILURE_TYPES = {
 LOCATIONS = ("tool_description", "tool_schema", "error_message", "system_prompt", "none")
 
 _FINDING_RE = re.compile(r"^###\s+\d+\.\s+([a-z_]+)\s*\(confidence:\s*(high|medium|low)", re.M | re.I)
+_SUMMARY_RE = re.compile(r"^-\s*Summary:\s*(.+)$", re.M)
 _LOCATION_RE = re.compile(r"^(?:Location|fix_location):\s*(.+)$", re.M | re.I)
 _FIX_SECTION_RE = re.compile(r"^##\s+Suggested fix\s*$(.*?)(?=^##\s|\Z)", re.M | re.S)
 
@@ -86,7 +87,12 @@ def out_of_bounds_citations(text):
 
 
 def parse_report(text):
-    """Return {"labels", "confidences", "locations", "citations"} for one report."""
+    """Return {"labels", "confidences", "locations", "citations"} for one report.
+
+    summary_no_failure is True when the report's Summary line starts with "No failure". The skill
+    sometimes files such a verdict under an `inconclusive` finding heading; the scorers can then show
+    the label both as written and read as no_failure.
+    """
     findings = [(m.group(1).lower(), m.group(2).lower()) for m in _FINDING_RE.finditer(text)]
     section = _FIX_SECTION_RE.search(text)
     locations = ["none"]
@@ -94,7 +100,9 @@ def parse_report(text):
         loc = _LOCATION_RE.search(section.group(1))
         if loc:
             locations = parse_locations(loc.group(1))
+    summary = _SUMMARY_RE.search(text)
     return {
+        "summary_no_failure": bool(summary and re.match(r"no failure", summary.group(1).strip(), re.I)),
         "labels": [f[0] for f in findings] or ["no_failure"],
         "confidences": [f[1] for f in findings],
         "locations": locations,

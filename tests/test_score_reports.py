@@ -42,12 +42,13 @@ def test_parse_report_with_findings():
         "confidences": ["high", "medium"],
         "locations": ["tool_schema"],
         "citations": [],
+        "summary_no_failure": False,
     }
 
 
 def test_parse_report_without_findings_is_no_failure():
     text = "# Trace x\n\n## Findings\n\nNo failure findings.\n\n## Suggested fix\n\nNone.\n\n## Limits\n"
-    assert sr.parse_report(text) == {"labels": ["no_failure"], "confidences": [], "locations": ["none"], "citations": []}
+    assert sr.parse_report(text) == {"labels": ["no_failure"], "confidences": [], "locations": ["none"], "citations": [], "summary_no_failure": False}
 
 
 def test_location_line_outside_the_fix_section_is_ignored():

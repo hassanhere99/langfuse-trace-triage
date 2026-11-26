@@ -112,3 +112,19 @@ def test_controls_need_the_key_fact():
 def test_unknown_scenario_raises():
     with pytest.raises(ValueError):
         fc.check("nope", [], "")
+
+
+FIXED_SHIPPED = ("I apologize, but your order BK-10388 has shipped and cannot be cancelled. However, you can initiate a return "
+                 "by contacting our customer service team. We'll be happy to assist you with the return process once the "
+                 "item has been delivered.")
+
+
+def test_response_level_return_rule_accepts_an_answer_that_ties_the_return_to_delivery_somewhere():
+    calls = [call("cancel_order", {"order_id": "BK-10388"}, {"error": "shipped"}, True)]
+    assert fc.check("cancel_shipped_order", calls, FIXED_SHIPPED)["failure"] is True  # sentence rule, pre-registered
+    assert fc.check("cancel_shipped_order", calls, FIXED_SHIPPED, return_rule="response")["failure"] is False
+
+
+def test_response_level_rule_still_flags_the_baseline_answer():
+    calls, text = baseline("cancel_shipped_order")
+    assert fc.check("cancel_shipped_order", calls, text, return_rule="response")["failure"] is True

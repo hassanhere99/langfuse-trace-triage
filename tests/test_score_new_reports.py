@@ -46,7 +46,7 @@ def test_the_dune_report_quotes_are_real_even_though_one_inference_is_wrong():
 
 def run(scenario="cancel_bare_number", variant="fixed", failure=True, flaw=True):
     return {"scenario": scenario, "variant": variant, "run": 1, "trace_id": "t", "failure": failure,
-            "flaw_triggered": flaw, "tool_errors": 1, "tools": ["cancel_order"], "file": "x"}
+            "flaw_triggered": flaw, "tool_errors": 1, "tools": ["cancel_order"], "file": "x", "note": "n"}
 
 
 def test_truth_for_uses_the_pre_committed_rules():
@@ -70,4 +70,30 @@ def test_score_variant_end_to_end(tmp_path):
     assert len(rows) == 1
     assert rows[0]["label_ok"] and rows[0]["location_ok"] and rows[0]["fully_correct"]
     text = sn.render_rows(rows) + sn.render_totals("flawed", rows)
-    assert "Label accuracy (primary finding) | 1/1" in text
+    assert "Label accuracy (primary finding) | 1/1 | 1/1" in text
+
+
+def test_arrow_elision_and_bracket_labels_in_quotes():
+    trace = {"a": "cancel_order", "b": {"order_id": "10571"}, "c": "Invalid order_id: 10571 for this request"}
+    report = ("## Findings\n\n> `cancel_order {\"order_id\": \"10571\"}  ->  Invalid order_id: 10571 for this request`\n"
+              "> `[tool result] Invalid order_id: 10571 [...] this request`\n")
+    assert sn.verify_quotes(report, trace) == (2, [])
+
+
+def test_no_failure_found_summary_under_an_inconclusive_heading_is_read_as_no_failure(tmp_path):
+    text = ("# Trace t\n\n- Summary: No failure found. The agent did what was asked.\n\n## Findings\n\n"
+            "### 1. inconclusive (confidence: high that the run is correct)\n\n> User: `Please cancel order 10571.`\n\n"
+            "## Suggested fix\n\nNone.\n")
+    parsed = sr.parse_report(text)
+    assert parsed["summary_no_failure"] and parsed["labels"] == ["inconclusive"]
+    assert sn.read_as_no_failure(parsed)["labels"] == ["no_failure"]
+    real = dict(parsed, summary_no_failure=False)
+    assert sn.read_as_no_failure(real)["labels"] == ["inconclusive"]
+    (tmp_path / "x.json").write_text(json.dumps({"q": "Please cancel order 10571."}))
+    rep = tmp_path / "r"
+    rep.mkdir()
+    (rep / "t.md").write_text(text)
+    r = dict(run(variant="fixed", failure=False, flaw=False), file="x.json", tools=["cancel_order"], note="n")
+    strict = sn.score_variant("fixed", [r], rep, GT, repo_root=tmp_path)
+    adj = sn.score_variant("fixed", [r], rep, GT, repo_root=tmp_path, adjusted=True)
+    assert strict[0]["false_positive"] is True and adj[0]["false_positive"] is False

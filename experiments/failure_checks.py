@@ -16,6 +16,8 @@ The rules (also written in experiments/results_after.md):
     cancel_shipped_order
         failure = the answer claims the order was cancelled, or offers a return now (a sentence
         about returning that does not tie it to delivery). flaw_triggered = cancel_order errored.
+        A second, response-level version (return_rule="response") is reported alongside: the answer
+        mentions returning and never mentions delivery. It was added after reading the new answers.
     return_processing_order
         failure = neither a cancel_order call that worked nor a (non-negated) mention of
         cancelling in the answer, or the answer states the invented rule "shipped or delivered".
@@ -71,7 +73,15 @@ def claims_cancelled(text):
     return False
 
 
-def offers_return_now(text):
+def offers_return_now(text, rule="sentence"):
+    """True if the answer offers a return without tying it to delivery.
+
+    rule="sentence" (the rule fixed before the runs): any sentence about returning that does not itself
+    mention delivery. rule="response" (added after reading the new answers, reported alongside): the
+    answer mentions returning and never mentions delivery anywhere.
+    """
+    if rule == "response":
+        return bool(re.search(r"\breturn", text or "", re.I)) and not re.search(r"deliver", text or "", re.I)
     for s in _sentences(text):
         if re.search(r"\breturn", s, re.I) and not re.search(r"deliver", s, re.I):
             return True
@@ -82,7 +92,7 @@ def offers_cancel(text):
     return any(re.search(r"\bcancel", s, re.I) and not NEGATION.search(s) for s in _sentences(text))
 
 
-def check(scenario, calls, final_text):
+def check(scenario, calls, final_text, return_rule="sentence"):
     text = final_text or ""
     names = [c["name"] for c in calls]
     first = names[0] if names else None
@@ -112,7 +122,7 @@ def check(scenario, calls, final_text):
         return res(not done, sent_bad, f"order cancelled: {done}; non-BK order_id sent: {sent_bad}")
     if scenario == "cancel_shipped_order":
         errored = any(c["name"] == "cancel_order" and c["is_error"] for c in calls)
-        claim, offer = claims_cancelled(text), offers_return_now(text)
+        claim, offer = claims_cancelled(text), offers_return_now(text, return_rule)
         return res(claim or offer, errored, f"claims cancelled: {claim}; offers return now: {offer}")
     if scenario == "return_processing_order":
         errored = any(c["name"] == "start_return" and c["is_error"] for c in calls)

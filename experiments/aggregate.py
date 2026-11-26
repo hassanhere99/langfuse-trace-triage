@@ -16,6 +16,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "experiments"))
 sys.path.insert(0, str(ROOT / "demo-agent"))
+sys.path.insert(0, str(ROOT / "skills" / "langfuse-trace-triage" / "scripts"))
 
 import error_changes  # noqa: E402
 import failure_checks as fc  # noqa: E402
@@ -68,8 +69,11 @@ def outcome_table(runs, baseline, key, title):
     out = [f"**{title}**\n", head, "|---|---|---|---|---|---|"]
     for s in SCENARIOS:
         b = baseline[s]
+        base_key = "failure" if key == "failure_response_rule" else key
         cells = [fraction(cell(runs, v, s), key) for v in VARIANTS]
-        out.append(f"| {s} | {'1/1' if b[key] else '0/1'} | " + " | ".join(cells) + " |")
+        if key == "failure_response_rule":
+            b = dict(b, failure=fc.check(s, b["calls"], b["final"], return_rule="response")["failure"])
+        out.append(f"| {s} | {'1/1' if b[base_key] else '0/1'} | " + " | ".join(cells) + " |")
     return "\n".join(out) + "\n"
 
 
@@ -148,12 +152,13 @@ def promptfoo_section():
 
 
 def triage_section(index_runs, ground_truth):
-    out, by_variant = [], {}
+    """{variant: (rows as written, rows with "No failure found" summaries read as no_failure)}."""
+    by_variant = {}
     for variant in ("flawed", "fixed"):
         rdir = ROOT / "experiments" / "reports" / variant
         runs = [r for r in index_runs if r["variant"] == variant]
-        rows = sn.score_variant(variant, runs, rdir, ground_truth)
-        by_variant[variant] = rows
+        by_variant[variant] = (sn.score_variant(variant, runs, rdir, ground_truth),
+                               sn.score_variant(variant, runs, rdir, ground_truth, adjusted=True))
     return by_variant
 
 
@@ -181,6 +186,13 @@ def build(notes_path=ROOT / "experiments" / "results_after_notes.md"):
         "(for `cancel_bare_number`: a non-`BK-` order ID was sent). Blank cells were not run. The committed run is the "
         "one in `examples/traces/`, checked with the same rules.\n")
     out.append(outcome_table(runs, baseline, "failure", "Failures out of 3 runs"))
+    out.append(
+        "`cancel_shipped_order` is the one scenario where the text rule is a judgement call. The rule fixed before the runs flags any "
+        "sentence that offers a return without mentioning delivery. The `fixed` and `errors_only` answers say \"you can initiate a return by "
+        "contacting our customer service team\" and, in the next sentence, \"once the item has been delivered\". A response-level rule "
+        "(the answer offers a return and never mentions delivery) was added after reading those answers. Both are shown; read the answers in "
+        "`experiments/runs/index.json` and judge for yourself.\n")
+    out.append(outcome_table(runs, baseline, "failure_response_rule", "Failures out of 3 runs, response-level return rule (added after seeing the answers)"))
     out.append(outcome_table(runs, baseline, "flaw_triggered", "Planted flaw triggered, out of 3 runs"))
     out.append("## The two fixes separately\n")
     out.extend(answers(runs))
@@ -209,15 +221,15 @@ def build(notes_path=ROOT / "experiments" / "results_after_notes.md"):
     out.append("Same scoring as `results_before.md`, with the differences listed in `experiments/score_new_reports.py` (expected labels from "
                "rules committed before triage, evidence checked by quote verification). † = ambiguous expected label. "
                "The skill was frozen: the version with the trace-only rule. Triage inputs had the experiment's own metadata removed.\n")
-    for variant, rows in by_variant.items():
+    for variant, (rows, adj) in by_variant.items():
         out.append(f"### {variant} traces\n")
         if not rows:
             out.append("No reports.\n")
             continue
         out.append(sn.render_rows(rows))
-        out.append(sn.render_totals(f"{variant}: totals", rows))
+        out.append(sn.render_totals(f"{variant}: totals", rows, adj))
     out.append("### Labels by variant\n")
-    labels = {v: sorted({l for r in rows for l in r["labels"] if l != "no_failure"}) for v, rows in by_variant.items()}
+    labels = {v: sorted({l for r in rows for l in r["labels"] if l != "no_failure"}) for v, (rows, _) in by_variant.items()}
     new_in_fixed = sorted(set(labels.get("fixed", [])) - set(labels.get("flawed", [])))
     out.append(f"Failure types reported on `flawed` traces: {', '.join(f'`{l}`' for l in labels.get('flawed', [])) or 'none'}. "
                f"On `fixed` traces: {', '.join(f'`{l}`' for l in labels.get('fixed', [])) or 'none'}. "

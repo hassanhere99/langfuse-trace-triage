@@ -68,7 +68,8 @@ def blind(obj, in_metadata=False):
 
 def allowed_tools(out_rel):
     skill = ROOT / "skills" / "langfuse-trace-triage"
-    return ["Skill", "Read(./**)", f"Read({skill}/**)",
+    # A leading "//" marks an absolute path in permission rules; a single "/" would be relative to the cwd.
+    return ["Skill", "Read(./**)", f"Read(/{skill}/**)",
             "Write(./**)", "Edit(./**)", f"Bash(python3 {skill}/scripts/*)"]
 
 
@@ -102,7 +103,8 @@ def triage_one(record, variant, work_root, dry_run=False):
     for p in work.rglob("*"):
         if p.is_file() and p.suffix in (".yaml", ".yml", ".json") and p != trace_copy:
             shutil.copy2(p, out_dir / "promptfoo" / p.name)
-    return cmd, {"trace_id": trace_id, "ok": True, "elapsed_s": elapsed}
+    denied = "denied" in proc.stdout.lower() or "permission" in proc.stdout.lower()
+    return cmd, {"trace_id": trace_id, "ok": True, "elapsed_s": elapsed, "mentions_permission_denial": denied}
 
 
 def main(argv=None):

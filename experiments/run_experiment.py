@@ -120,6 +120,8 @@ def do_runs(plan_name, plan):
 
     from check_langfuse_project import describe, get_projects
     print(describe(*get_projects()))
+    # check_langfuse_project re-reads .env, which puts DEMO_MODEL back; pin it again.
+    os.environ["DEMO_MODEL"] = MODEL
     print(f"Model: {MODEL} at {os.environ['OPENAI_BASE_URL']}  temperature={plan['temperature']}  seed=None\n", flush=True)
 
     import openai
@@ -212,6 +214,7 @@ def do_export(plan_name, plan, attempts=12, delay=5.0):
     from repo_env import langfuse_host, load_repo_env
     load_repo_env()
     import export_traces as ex
+    import failure_checks as fc
     from fetch_trace import fetch_trace
 
     out = plan["out"]
@@ -230,6 +233,7 @@ def do_export(plan_name, plan, attempts=12, delay=5.0):
         path = out / r["variant"] / r["scenario"] / f"run_{r['run']}.json"
         entry = {k: r[k] for k in ("variant", "scenario", "run", "trace_id", "elapsed_s", "failure", "flaw_triggered",
                                    "note", "tools", "tool_errors", "final_text", "misleading_not_found")}
+        entry["failure_response_rule"] = fc.check(r["scenario"], r["tool_calls"], r["final_text"], return_rule="response")["failure"]
         entry["file"] = str(path.relative_to(ROOT))
         if not path.exists():
             trace = ex.fetch_with_retry(fetch, r["trace_id"], attempts, delay)
