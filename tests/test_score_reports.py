@@ -41,12 +41,13 @@ def test_parse_report_with_findings():
         "labels": ["wrong_arguments", "tool_error_mishandled"],
         "confidences": ["high", "medium"],
         "locations": ["tool_schema"],
+        "citations": [],
     }
 
 
 def test_parse_report_without_findings_is_no_failure():
     text = "# Trace x\n\n## Findings\n\nNo failure findings.\n\n## Suggested fix\n\nNone.\n\n## Limits\n"
-    assert sr.parse_report(text) == {"labels": ["no_failure"], "confidences": [], "locations": ["none"]}
+    assert sr.parse_report(text) == {"labels": ["no_failure"], "confidences": [], "locations": ["none"], "citations": []}
 
 
 def test_location_line_outside_the_fix_section_is_ignored():
@@ -63,6 +64,7 @@ def test_ground_truth_is_well_formed():
         assert r["expected_fix_location"] in sr.LOCATIONS
         assert r["what_happened"].strip()
         assert r["tools_involved"]
+        assert isinstance(r["evidence_correct"], bool) and r["evidence_note"].strip()
         if r["ambiguous"]:
             assert r["ambiguous_reason"].strip()
         if r["expected_failure_type"] == "no_failure":
@@ -77,19 +79,30 @@ def test_ground_truth_matches_the_committed_traces_and_reports():
         assert (REPORTS / f"{r['trace_id']}.md").is_file()
 
 
+def test_citations_outside_the_trace_are_detected():
+    assert sr.out_of_bounds_citations("see `demo-agent/tools.py` for the rule") == ["demo-agent/tools.py"]
+    assert sr.out_of_bounds_citations("from the other traces in `examples/traces/`") == ["other trace files (examples/traces/)"]
+    # tools.json is the promptfoo copy of the tool definitions, which is part of the test, not evidence
+    assert sr.out_of_bounds_citations("as recorded in `examples/promptfoo/tools.json`") == []
+
+
 def test_scoring_the_committed_reports():
     truth = sr.load_ground_truth(GROUND_TRUTH)
     rows = [sr.score_one(t, sr.parse_report((REPORTS / f"{t['trace_id']}.md").read_text())) for t in truth]
     by = {r["scenario"]: r for r in rows}
     assert by["undo_delivered_order"]["labels"] == ["description_overlap", "wrong_tool", "wrong_arguments", "missing_tool_call"]
     assert by["undo_delivered_order"]["false_positive"] is True
+    assert by["undo_delivered_order"]["worst_wrong"] == [("description_overlap", "high"), ("wrong_arguments", "high")]
     assert by["cancel_bare_number"]["locations"] == ["tool_schema", "error_message"]
+    assert by["unneeded_lookup"]["label_ok"] and not by["unneeded_lookup"]["fully_correct"]
+    assert {k for k, r in by.items() if r["citations"]} == {"cancel_bare_number", "cancel_shipped_order", "return_processing_order"}
     t = sr.totals(rows)
     assert t["n"] == 8
-    assert t["label_strict"] == 7
-    assert t["location_strict"] == 7
-    assert t["false_pos_firm"] == (0, 3)
-    assert t["false_pos_all"] == (1, 4)
+    assert t["label"] == 7
+    assert t["fully_correct"] == 6
+    assert t["evidence_in_bounds"] == 5
+    assert t["location"] == 7
+    assert t["false_pos"] == (1, 4)
     assert t["sys_prompt_single"] == (0, 2)
     assert t["sys_prompt_any"] == 0
 
@@ -106,8 +119,11 @@ def test_main_writes_the_results_file(tmp_path):
     out = tmp_path / "results.md"
     assert sr.main(["--out", str(out)]) == 0
     text = out.read_text()
-    assert "| Scenario | Planted flaw | Agent behaviour | Skill label | Confidence | Label correct? | Fix location | Location correct? |" in text
+    assert "| Scenario | Planted flaw | Agent behaviour | Skill label | Confidence | Label correct? | Evidence correct? | Evidence in bounds? | Fix location | Location correct? |" in text
     assert "Label accuracy (primary finding) | 7/8" in text
+    assert "Fully correct (label right and no false fact) | 6/8" in text
+    assert "1/4 clean-behaviour traces" in text
+    assert "Evidence correct?" in text and "Evidence in bounds?" in text
     assert "system-prompt edit for a failure involving only one tool" in text
 
 

@@ -1,10 +1,16 @@
 # Ground truth for the 8 committed example traces in examples/traces/.
 #
-# How this was written: from the committed trace JSON (what the agent actually did) and from
-# demo-agent/tools.py (the planted flaws and the real server rules). The committed reports were
-# also read before this file was finished, so the labels are not blind to them. Where a label is
-# a judgement call it is marked ambiguous: true with a reason. Scoring reports both the strict
-# totals (all 8 scenarios) and the totals without the ambiguous ones.
+# How this was written: planted flaws were defined in the scenario design (demo-agent/README.md and
+# demo-agent/tools.py) before any report was generated. Only the "what_happened" text (and
+# behaviour_short) and the expected labels for scenarios that diverged from their design
+# (undo_delivered_order, return_window_from_memory, unneeded_lookup) were written after reading
+# the reports. Where a label is a judgement call it is marked ambiguous: true with a reason.
+# Scoring reports totals over all 8 scenarios and over the unambiguous ones.
+#
+# evidence_correct: false if the committed report states a fact that is false (checked against the
+# trace and demo-agent/tools.py). A report is "fully correct" only if its label is right AND
+# evidence_correct is true. "Evidence in bounds" is not stored here: score_reports.py detects
+# citations of demo-agent/ or examples/traces/ in the report text.
 #
 # Allowed values
 #   expected_failure_type: wrong_tool | wrong_arguments | missing_tool_call | unnecessary_tool_call |
@@ -26,6 +32,8 @@ scenarios:
       answered with those exact values. It also offered to "place an order", which no tool can do.
     expected_failure_type: no_failure
     expected_fix_location: none
+    evidence_correct: true
+    evidence_note: "Price, stock and the observation about offering to place an order match the trace and tools.py."
     tools_involved: [search_books]
     ambiguous: false
 
@@ -38,6 +46,8 @@ scenarios:
       (3 to 5 business days, $4.50, free over $35, express 1 to 2 days at $12.00).
     expected_failure_type: no_failure
     expected_fix_location: none
+    evidence_correct: true
+    evidence_note: "Restated policy matches tools.py."
     tools_involved: [get_store_policy]
     ambiguous: false
 
@@ -50,6 +60,8 @@ scenarios:
       answered from the result (30 days from delivery). No failure.
     expected_failure_type: no_failure
     expected_fix_location: none
+    evidence_correct: true
+    evidence_note: "Matches the trace."
     tools_involved: [get_store_policy]
     ambiguous: false
 
@@ -65,6 +77,8 @@ scenarios:
       and fail; that did not happen.
     expected_failure_type: no_failure
     expected_fix_location: none
+    evidence_correct: true
+    evidence_note: "Stated facts match the trace. The suggested cancel_order text mentions a status \"paid\" that does not exist in this store; that is in a proposed rewrite, not a claim about the trace, so it is not scored."
     tools_involved: [cancel_order, start_return]
     ambiguous: true
     ambiguous_reason: >-
@@ -83,6 +97,8 @@ scenarios:
       The order (processing, so cancellable) was not cancelled.
     expected_failure_type: wrong_arguments
     expected_fix_location: tool_schema
+    evidence_correct: true
+    evidence_note: "Facts match the trace and tools.py. The BK- format is inferred from other trace files, which is flagged as out of bounds instead."
     tools_involved: [cancel_order]
     ambiguous: true
     ambiguous_reason: >-
@@ -101,6 +117,8 @@ scenarios:
       label for a shipped order, so the offer is invented.
     expected_failure_type: tool_error_mishandled
     expected_fix_location: error_message
+    evidence_correct: true
+    evidence_note: "Facts match the trace and tools.py."
     tools_involved: [cancel_order, start_return]
     ambiguous: true
     ambiguous_reason: >-
@@ -120,6 +138,8 @@ scenarios:
       customer to support.
     expected_failure_type: tool_error_mishandled
     expected_fix_location: error_message
+    evidence_correct: true
+    evidence_note: "Facts match the trace and tools.py."
     tools_involved: [cancel_order, start_return]
     ambiguous: true
     ambiguous_reason: >-
@@ -139,6 +159,8 @@ scenarios:
       information on a book called "Dune"", which is false, and gave a general answer.
     expected_failure_type: unnecessary_tool_call
     expected_fix_location: tool_description
+    evidence_correct: false
+    evidence_note: "The report says the empty result means the store does not list the book. Dune is in the catalog (tools.py, stock 22); search_books missed it because it cannot match title and author together. See experiments/discovered_bugs.md."
     tools_involved: [search_books]
     ambiguous: true
     ambiguous_reason: >-

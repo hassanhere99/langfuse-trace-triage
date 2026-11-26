@@ -17,8 +17,10 @@ What it extracts from a report
                           Location line (or "None") is read as "none". The first location
                           named is the primary one.
 
-"Correct" means the primary label (or primary location) equals the ground truth. The
-lenient figures count a match anywhere in the list.
+"Label correct" means the primary label equals the ground truth. "Fully correct" also needs
+the report to state no false fact (evidence_correct in the ground truth). "Evidence in bounds"
+is detected from the report text: a report that cites demo-agent/ code or other files in
+examples/traces/ used evidence from outside the trace it was triaging.
 """
 from __future__ import annotations
 
@@ -72,8 +74,19 @@ def parse_locations(text):
     return out or ["unrecognised"]
 
 
+_CITATION_PATTERNS = (
+    (re.compile(r"demo-agent/tools\.py"), "demo-agent/tools.py"),
+    (re.compile(r"examples/traces/"), "other trace files (examples/traces/)"),
+)
+
+
+def out_of_bounds_citations(text):
+    """Sources outside the triaged trace that the report cites as evidence."""
+    return [name for pattern, name in _CITATION_PATTERNS if pattern.search(text)]
+
+
 def parse_report(text):
-    """Return {"labels": [...], "confidences": [...], "locations": [...]} for one report."""
+    """Return {"labels", "confidences", "locations", "citations"} for one report."""
     findings = [(m.group(1).lower(), m.group(2).lower()) for m in _FINDING_RE.finditer(text)]
     section = _FIX_SECTION_RE.search(text)
     locations = ["none"]
@@ -85,6 +98,7 @@ def parse_report(text):
         "labels": [f[0] for f in findings] or ["no_failure"],
         "confidences": [f[1] for f in findings],
         "locations": locations,
+        "citations": out_of_bounds_citations(text),
     }
 
 
@@ -93,13 +107,22 @@ def load_ground_truth(path):
     return data["scenarios"]
 
 
+_CONF_RANK = {"high": 3, "medium": 2, "low": 1}
+
+
+def worst_wrong_findings(labels, confidences, expected):
+    """The wrong findings (label != expected) that have the highest confidence."""
+    wrong = [(l, c) for l, c in zip(labels, confidences) if l != expected]
+    if not wrong:
+        return []
+    top = max(_CONF_RANK[c] for _, c in wrong)
+    return [(l, c) for l, c in wrong if _CONF_RANK[c] == top]
+
+
 def score_one(truth, parsed):
     labels, locations = parsed["labels"], parsed["locations"]
     expected_label, expected_loc = truth["expected_failure_type"], truth["expected_fix_location"]
     label_ok = labels[0] == expected_label
-    label_any = expected_label in labels
-    loc_ok = locations[0] == expected_loc
-    loc_any = expected_loc in locations
     clean = expected_label == "no_failure"
     return {
         "scenario": truth["scenario"],
@@ -108,11 +131,13 @@ def score_one(truth, parsed):
         "confidences": parsed["confidences"],
         "locations": locations,
         "label_ok": label_ok,
-        "label_any": label_any,
-        "location_ok": loc_ok,
-        "location_any": loc_any,
+        "evidence_ok": bool(truth.get("evidence_correct", True)),
+        "fully_correct": label_ok and bool(truth.get("evidence_correct", True)),
+        "citations": parsed.get("citations", []),
+        "location_ok": locations[0] == expected_loc,
         "clean": clean,
         "false_positive": clean and labels != ["no_failure"],
+        "worst_wrong": worst_wrong_findings(labels, parsed["confidences"], expected_label) if clean else [],
         "system_prompt_suggested": "system_prompt" in locations,
         "single_tool": len(truth.get("tools_involved", [])) == 1,
     }
@@ -122,36 +147,40 @@ def totals(rows):
     n = len(rows)
     firm = [r for r in rows if not r["ambiguous"]]
     clean = [r for r in rows if r["clean"]]
-    clean_firm = [r for r in clean if not r["ambiguous"]]
     failing = [r for r in rows if not r["clean"]]
     single = [r for r in failing if r["single_tool"]]
     return {
         "n": n,
-        "label_strict": sum(r["label_ok"] for r in rows),
-        "label_any": sum(r["label_any"] for r in rows),
+        "label": sum(r["label_ok"] for r in rows),
+        "fully_correct": sum(r["fully_correct"] for r in rows),
+        "evidence_in_bounds": sum(not r["citations"] for r in rows),
+        "location": sum(r["location_ok"] for r in rows),
         "label_firm": (sum(r["label_ok"] for r in firm), len(firm)),
-        "location_strict": sum(r["location_ok"] for r in rows),
-        "location_any": sum(r["location_any"] for r in rows),
         "location_firm": (sum(r["location_ok"] for r in firm), len(firm)),
-        "label_failing": (sum(r["label_ok"] for r in failing), len(failing)),
-        "location_failing": (sum(r["location_ok"] for r in failing), len(failing)),
-        "false_pos_firm": (sum(r["false_positive"] for r in clean_firm), len(clean_firm)),
-        "false_pos_all": (sum(r["false_positive"] for r in clean), len(clean)),
+        "false_pos": (sum(r["false_positive"] for r in clean), len(clean)),
         "sys_prompt_single": (sum(r["system_prompt_suggested"] for r in single), len(single)),
         "sys_prompt_any": sum(r["system_prompt_suggested"] for r in rows),
     }
 
 
-def _yn(ok, any_ok, label):
-    if ok:
+def _yn(ok, expected):
+    return f"{'yes' if ok else 'no'} (expected `{expected}`)"
+
+
+def _evidence_cell(r, truth):
+    if r["evidence_ok"]:
         return "yes"
-    if any_ok:
-        return f"no (primary), but `{label}` is listed later"
-    return "no"
+    reason = truth.get("evidence_note", "").split(". ")[0].rstrip(".")
+    return f"no: {reason} → not fully correct"
+
+
+def _bounds_cell(r):
+    return "yes" if not r["citations"] else "no: cites " + ", ".join(r["citations"])
 
 
 def render(truth_rows, rows, reports_dir):
     t = totals(rows)
+    n = t["n"]
     out = []
     out.append("# Results before: the committed reports scored against the ground truth\n")
     out.append(
@@ -162,10 +191,12 @@ def render(truth_rows, rows, reports_dir):
         "Rows marked † have an ambiguous ground-truth label (reason in `ground_truth.yaml`). "
         "\"Skill label\" lists every finding in the report, primary first; \"Label correct?\" and "
         "\"Location correct?\" are judged on the primary (first) one. Confidence is listed per "
-        "finding in the same order.\n"
+        "finding in the same order. A report is fully correct only if the label is right and none of "
+        "its stated facts is false (\"Evidence correct?\"). \"Evidence in bounds?\" asks whether the "
+        "report used only the trace it was triaging.\n"
     )
-    out.append("| Scenario | Planted flaw | Agent behaviour | Skill label | Confidence | Label correct? | Fix location | Location correct? |")
-    out.append("|---|---|---|---|---|---|---|---|")
+    out.append("| Scenario | Planted flaw | Agent behaviour | Skill label | Confidence | Label correct? | Evidence correct? | Evidence in bounds? | Fix location | Location correct? |")
+    out.append("|---|---|---|---|---|---|---|---|---|---|")
     for tr, r in zip(truth_rows, rows):
         mark = " †" if r["ambiguous"] else ""
         labels = ", ".join(f"`{x}`" for x in r["labels"])
@@ -173,46 +204,53 @@ def render(truth_rows, rows, reports_dir):
         locs = ", ".join(f"`{x}`" for x in r["locations"])
         out.append(
             f"| {r['scenario']}{mark} | {tr['planted_flaw']} | {tr['behaviour_short']} | {labels} | {conf} | "
-            f"{_yn(r['label_ok'], r['label_any'], tr['expected_failure_type'])} (expected `{tr['expected_failure_type']}`) | "
-            f"{locs} | {_yn(r['location_ok'], r['location_any'], tr['expected_fix_location'])} (expected `{tr['expected_fix_location']}`) |"
+            f"{_yn(r['label_ok'], tr['expected_failure_type'])} | {_evidence_cell(r, tr)} | {_bounds_cell(r)} | "
+            f"{locs} | {_yn(r['location_ok'], tr['expected_fix_location'])} |"
         )
     out.append("")
-    n = t["n"]
     out.append("## Totals\n")
     out.append("| Measure | Result |")
     out.append("|---|---|")
-    out.append(f"| Label accuracy (primary finding) | {t['label_strict']}/{n} |")
-    out.append(f"| Label accuracy, expected label anywhere in the report | {t['label_any']}/{n} |")
-    out.append(f"| Label accuracy, scenarios with a failure only | {t['label_failing'][0]}/{t['label_failing'][1]} |")
-    out.append(f"| Label accuracy, without ambiguous rows | {t['label_firm'][0]}/{t['label_firm'][1]} |")
-    out.append(f"| Fix-location accuracy (primary location) | {t['location_strict']}/{n} |")
-    out.append(f"| Fix-location accuracy, expected location anywhere in the list | {t['location_any']}/{n} |")
-    out.append(f"| Fix-location accuracy, scenarios with a failure only | {t['location_failing'][0]}/{t['location_failing'][1]} |")
-    out.append(f"| Fix-location accuracy, without ambiguous rows | {t['location_firm'][0]}/{t['location_firm'][1]} |")
-    out.append(f"| Clean traces that got a made-up failure (false positives), unambiguous clean traces | {t['false_pos_firm'][0]}/{t['false_pos_firm'][1]} |")
-    out.append(f"| Same, counting the ambiguous clean trace (`undo_delivered_order`) as clean | {t['false_pos_all'][0]}/{t['false_pos_all'][1]} |")
+    out.append(f"| Label accuracy (primary finding) | {t['label']}/{n} |")
+    out.append(f"| Fully correct (label right and no false fact) | {t['fully_correct']}/{n} |")
+    out.append(f"| Fix-location accuracy (primary location) | {t['location']}/{n} |")
+    out.append(f"| Label accuracy without ambiguous rows | {t['label_firm'][0]}/{t['label_firm'][1]} |")
+    out.append(f"| Fix-location accuracy without ambiguous rows | {t['location_firm'][0]}/{t['location_firm'][1]} |")
+    out.append(f"| Reports whose evidence stayed inside the trace | {t['evidence_in_bounds']}/{n} |")
+    fp_rows = [r for r in rows if r["false_positive"]]
+    detail = "; ".join(
+        f"`{r['scenario']}`: " + ", ".join(f"`{l}` ({c})" for l, c in r["worst_wrong"]) for r in fp_rows
+    )
+    out.append(
+        f"| False positives (a failure reported where the agent behaved correctly) | "
+        f"{t['false_pos'][0]}/{t['false_pos'][1]} clean-behaviour traces"
+        + (f". Highest-confidence wrong finding: {detail}" if detail else "")
+        + " |"
+    )
     out.append(f"| Reports that suggested a system-prompt edit for a failure involving only one tool | {t['sys_prompt_single'][0]} of {t['sys_prompt_single'][1]} single-tool failures |")
     out.append(f"| Reports that suggested a system-prompt edit at all | {t['sys_prompt_any']} of {n} |")
     out.append("")
-    out.append("## How to read this\n")
+    out.append("## Notes\n")
     out.append(
-        "- The ground truth is not blind. Claude drafted it from the committed traces and `demo-agent/tools.py` after "
-        "reading the reports. Treat the ambiguous rows as open.\n"
+        "- Clean-behaviour traces are the four with ground truth `no_failure`: `search_by_title`, `shipping_policy`, "
+        "`return_window_from_memory` and `undo_delivered_order` (ambiguous: the outcome was right, but the status check "
+        "was skipped and `reason` was filled with \"None\").\n"
+        "- Ground truth: planted flaws were defined in the scenario design before any report existed. Only the "
+        "\"what the agent did\" column and the expected labels for the scenarios that diverged from their design were "
+        "written after reading the reports. Treat the ambiguous rows as open.\n"
         "- A \"fix location\" is read from the report's `Location:` line. Reports name several locations in one line, so the "
         "first one named counts as primary. `server behaviour` is mapped to `error_message`. The reports have no "
         "explicit `fix_location` field yet (that is step 6), so this is a text parse and can be wrong for a phrasing it has not seen.\n"
         "- The system-prompt count looks only at the `Location:` line. Reports that mention the system prompt only to say "
-        "the fix does not belong there are not counted.\n"
-        "- Single-tool failures in the ground truth: those whose `tools_involved` has one entry and that are not clean.\n"
-        "\n## What the table does not check\n\n"
-        "Labels and locations only. Claims inside the reports are not scored. Three worth knowing before quoting a report:\n\n"
-        "- `unneeded_lookup`: the report says the empty search result \"means the store does not list the book\". "
-        "`demo-agent/tools.py` lists Dune (stock 22); the search missed it because it matches the query as a substring "
-        "of the title or the author, not both together. The trace alone cannot show this.\n"
-        "- `undo_delivered_order`: the report rates `wrong_tool` as medium because the trace has no order status. "
-        "The order is delivered, so `start_return` was the right action.\n"
-        "- `cancel_shipped_order` and `return_processing_order`: the reports use `demo-agent/tools.py` as evidence, "
-        "which the skill's later rule (use only the trace being triaged) no longer allows.\n"
+        "the fix does not belong there are not counted. Single-tool failures are the non-clean scenarios whose "
+        "`tools_involved` has one entry.\n"
+        "- **The reports were made by an earlier version of the skill.** The rule \"use only the trace being triaged\" "
+        "was added in commit `9feb2e8`, after the reports were committed (`3ee0a5a`, from the skill as of `995c40e`). "
+        "Three reports cite material outside their trace: `cancel_shipped_order` and `return_processing_order` cite "
+        "`demo-agent/tools.py`, and `cancel_bare_number` infers the `BK-` format from other trace files. The current skill "
+        "would not be allowed to do that.\n"
+        "- Evidence correctness is checked by hand against the traces and `demo-agent/tools.py` (see `evidence_note` in the "
+        "ground truth). `unneeded_lookup` has a false claim, see `experiments/discovered_bugs.md`.\n"
     )
     return "\n".join(out) + "\n"
 
