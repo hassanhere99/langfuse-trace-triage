@@ -113,6 +113,42 @@ def test_building_the_fixed_tools_does_not_modify_the_flawed_ones():
     assert json.dumps(tools.TOOLS) == before
 
 
+# --- fixed: change 2, errors say what to do next ----------------------------------------------------
+
+def test_fixed_start_return_on_an_unshipped_order_says_to_cancel_instead():
+    assert err("start_return", {"order_id": "BK-10571"}, "fixed") == (
+        "Order BK-10571 has not shipped, so it can't be returned. It can be cancelled instead with cancel_order."
+    )
+
+
+@pytest.mark.parametrize("name,args,expected", [
+    ("cancel_order", {"order_id": "BK-10388"}, "A return can be started once it has been delivered."),
+    ("cancel_order", {"order_id": "BK-10234"}, "start_return"),
+    ("start_return", {"order_id": "BK-10388"}, "once it has been delivered"),
+    ("cancel_order", {"order_id": "10571"}, "BK- followed by 5 digits, e.g. BK-10571"),
+    ("get_order_status", {"order_id": "10571"}, "BK- followed by 5 digits, e.g. BK-10571"),
+    ("get_order_status", {}, "BK-10571"),
+    ("get_order_status", {"order_id": "BK-99999"}, "Check the order ID"),
+    ("search_books", {}, "Pass a title, author name or ISBN."),
+    ("nope", {}, "Available tools: search_books"),
+    ("search_books", [], "for example"),
+])
+def test_fixed_errors_say_what_to_do_next(name, args, expected):
+    flawed_msg, fixed_msg = err(name, args, "flawed"), err(name, args, "fixed")
+    assert expected in fixed_msg
+    assert fixed_msg != flawed_msg
+
+
+def test_fixed_cancelled_order_errors_need_no_further_action():
+    tools.execute("cancel_order", {"order_id": "BK-10571"}, "fixed")  # cancels it
+    assert "already cancelled" in err("cancel_order", {"order_id": "BK-10571"}, "fixed")
+    assert "was cancelled" in err("start_return", {"order_id": "BK-10571"}, "fixed")
+
+
+def test_the_policy_error_already_said_what_to_do_and_is_unchanged():
+    assert err("get_store_policy", {"topic": "x"}, "fixed") == err("get_store_policy", {"topic": "x"}, "flawed")
+
+
 # --- both variants: behaviour that must not change ------------------------------------------------------
 
 @pytest.mark.parametrize("name,args", [
