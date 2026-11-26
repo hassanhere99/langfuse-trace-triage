@@ -348,3 +348,23 @@ def test_agent_temperature_and_metadata_are_passed_through(monkeypatch):
                    metadata={"experiment": "e", "run": 2})
     assert calls[0]["temperature"] == 0.7
     assert seen[0]["metadata"] == {"scenario_id": "s", "agent_variant": "flawed", "experiment": "e", "run": 2}
+
+
+# --- promptfoo configs for the experiment ----------------------------------------------------------------
+
+@pytest.mark.parametrize("variant", ["flawed", "fixed"])
+def test_experiment_promptfoo_tools_are_generated_from_tools_py(variant):
+    path = ROOT / "experiments" / "promptfoo" / f"tools.{variant}.json"
+    assert json.loads(path.read_text()) == tools.tools_for(variant)
+
+
+@pytest.mark.parametrize("variant", ["flawed", "fixed"])
+def test_experiment_promptfoo_configs_run_the_same_tests_as_the_committed_config(variant):
+    def tests(path):
+        return re.findall(r"- file://(?:\.\./\.\./examples/promptfoo/)?(\S+\.yaml)", path.read_text())
+
+    committed = tests(ROOT / "examples" / "promptfoo" / "promptfooconfig.yaml")
+    mine = tests(ROOT / "experiments" / "promptfoo" / f"promptfooconfig.{variant}.yaml")
+    assert len(committed) == 8 and mine == committed
+    text = (ROOT / "experiments" / "promptfoo" / f"promptfooconfig.{variant}.yaml").read_text()
+    assert f"tools: file://tools.{variant}.json" in text and "temperature: 0\n" in text
