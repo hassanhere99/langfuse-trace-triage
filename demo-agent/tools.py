@@ -5,15 +5,17 @@ triage skill to find. The flawed behaviour is the default and must stay reproduc
 what examples/ was generated from. Do not edit it without updating demo-agent/README.md and
 regenerating examples/promptfoo/tools.json.
 
-Variants (AGENT_VARIANT=flawed|fixed, default flawed)
-    flawed  the tools exactly as the committed examples were generated.
-    fixed   two changes, nothing else:
-            1. the order_id description of every tool that takes one states the format
-               (BK- followed by 5 digits, e.g. BK-10571);
-            2. error messages say what to do next, not only what failed.
-            The cancel_order / start_return description overlap (flaw a) is NOT fixed. It is
-            the control of the experiment. The search_books matching limitation is not fixed
-            either (see experiments/discovered_bugs.md).
+Variants (AGENT_VARIANT=flawed|fixed|desc_only|errors_only, default flawed)
+    flawed       the tools exactly as the committed examples were generated.
+    fixed        two changes, nothing else:
+                 1. the order_id description of every tool that takes one states the format
+                    (BK- followed by 5 digits, e.g. BK-10571);
+                 2. error messages say what to do next, not only what failed.
+    desc_only    change 1 only, with the flawed error messages.
+    errors_only  change 2 only, with the flawed order_id description.
+    The cancel_order / start_return description overlap (flaw a) is NOT fixed in any variant. It
+    is the control of the experiment. The search_books matching limitation is not fixed either
+    (see experiments/discovered_bugs.md).
 
 Deliberate flaws:
 
@@ -32,7 +34,7 @@ Server behaviour that makes the flaws visible:
 
 Usage:
     python demo-agent/tools.py --dump-tools > examples/promptfoo/tools.json
-    python demo-agent/tools.py --dump-tools --variant fixed
+    python demo-agent/tools.py --dump-tools --variant fixed|desc_only|errors_only
 """
 from __future__ import annotations
 
@@ -155,7 +157,14 @@ TOOLS = [
 
 # --- Variants ---------------------------------------------------------------------------
 
-VARIANTS = ("flawed", "fixed")
+# variant -> (fix 1: order_id description, fix 2: error messages)
+_VARIANT_FIXES = {
+    "flawed": (False, False),
+    "fixed": (True, True),
+    "desc_only": (True, False),
+    "errors_only": (False, True),
+}
+VARIANTS = tuple(_VARIANT_FIXES)
 ORDER_ID_FIXED = "The order ID. Format: BK- followed by 5 digits, e.g. BK-10571."
 
 
@@ -169,8 +178,8 @@ def resolve_variant(value=None):
 
 
 def tools_for(variant=None):
-    """Tool definitions for a variant. The flawed list is TOOLS itself; fixed is a modified copy."""
-    if resolve_variant(variant) == "flawed":
+    """Tool definitions for a variant. Without fix 1 this is TOOLS itself; otherwise a modified copy."""
+    if not _VARIANT_FIXES[resolve_variant(variant)][0]:
         return TOOLS
     fixed = copy.deepcopy(TOOLS)
     for tool in fixed:
@@ -189,6 +198,7 @@ def _err(message):
     return {"error": message}, True
 
 
+# In the implementations below, `fixed` means "fix 2 is on": errors say what to do next.
 def _find_order(args, fixed):
     order_id = args.get("order_id")
     if not isinstance(order_id, str) or not order_id:
@@ -289,9 +299,9 @@ _IMPLS = {
 def execute(name, args, variant=None):
     """Run a tool. Returns (result_dict, is_error). Errors are {"error": "..."} with is_error True.
 
-    variant is flawed or fixed; None means AGENT_VARIANT from the environment, default flawed.
+    variant is one of VARIANTS; None means AGENT_VARIANT from the environment, default flawed.
     """
-    fixed = resolve_variant(variant) == "fixed"
+    fixed = _VARIANT_FIXES[resolve_variant(variant)][1]  # the "fixed" flag in the impls means fix 2
     impl = _IMPLS.get(name)
     if impl is None:
         msg = f"Unknown tool: {name}"
@@ -322,5 +332,5 @@ if __name__ == "__main__":
         json.dump(tools_for(variant), sys.stdout, indent=2)
         sys.stdout.write("\n")
     else:
-        sys.stderr.write("usage: python demo-agent/tools.py --dump-tools [--variant flawed|fixed] > tools.json\n")
+        sys.stderr.write("usage: python demo-agent/tools.py --dump-tools [--variant flawed|fixed|desc_only|errors_only] > tools.json\n")
         sys.exit(2)

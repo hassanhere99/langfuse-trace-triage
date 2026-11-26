@@ -158,22 +158,26 @@ def test_the_policy_error_already_said_what_to_do_and_is_unchanged():
     ("get_store_policy", {"topic": "returns"}),
 ])
 def test_successful_results_are_identical(name, args):
-    assert tools.execute(name, args, "flawed") == tools.execute(name, args, "fixed")
+    results = {v: tools.execute(name, args, v) for v in tools.VARIANTS}
+    assert all(r == results["flawed"] for r in results.values())
 
 
 def test_cancel_success_is_identical():
     flawed = tools.execute("cancel_order", {"order_id": "BK-10571"}, "flawed")
     tools.reset_state()
-    assert tools.execute("cancel_order", {"order_id": "BK-10571"}, "fixed") == flawed
+    for v in tools.VARIANTS:
+        tools.reset_state()
+        assert tools.execute("cancel_order", {"order_id": "BK-10571"}, v) == flawed
 
 
-def test_fixed_does_not_loosen_order_id_validation():
-    assert err("cancel_order", {"order_id": "10571"}, "fixed").startswith('Invalid order_id: "10571"')
-    assert tools.execute("get_order_status", {"order_id": "BK-10571"}, "fixed")[1] is False
+@pytest.mark.parametrize("variant", tools.VARIANTS)
+def test_no_variant_loosens_order_id_validation(variant):
+    assert err("cancel_order", {"order_id": "10571"}, variant).startswith('Invalid order_id: "10571"')
+    assert tools.execute("get_order_status", {"order_id": "BK-10571"}, variant)[1] is False
 
 
-def test_search_books_limitation_is_left_alone_in_both_variants():
-    for variant in ("flawed", "fixed"):
+def test_search_books_limitation_is_left_alone_in_every_variant():
+    for variant in tools.VARIANTS:
         assert tools.execute("search_books", {"query": "Dune by Frank Herbert"}, variant)[0]["count"] == 0
         assert tools.execute("search_books", {"query": "Dune"}, variant)[0]["count"] == 1
 
@@ -216,7 +220,7 @@ class _FakeLangfuse:
         return "trace-1"
 
 
-@pytest.mark.parametrize("variant", ["flawed", "fixed"])
+@pytest.mark.parametrize("variant", tools.VARIANTS)
 def test_agent_uses_the_selected_variant(monkeypatch, variant):
     import agent
     seen_meta = []
@@ -248,3 +252,99 @@ def test_agent_reads_the_variant_from_the_environment(monkeypatch):
     calls = []
     agent.run_turn("x", "s", client=_fake_model(calls), model="m")
     assert calls[0]["tools"] == tools.tools_for("fixed")
+
+
+# --- the two fixes are separable: desc_only and errors_only ------------------------------------------
+
+import error_changes  # noqa: E402  (experiments/ is on the path via conftest)
+
+
+def diff_paths(a, b, path=""):
+    """Paths at which two JSON-like structures differ."""
+    if type(a) is not type(b):
+        return [path]
+    if isinstance(a, dict):
+        out = []
+        for k in sorted(set(a) | set(b)):
+            if k not in a or k not in b:
+                out.append(f"{path}/{k}")
+            else:
+                out += diff_paths(a[k], b[k], f"{path}/{k}")
+        return out
+    if isinstance(a, list):
+        if len(a) != len(b):
+            return [path]
+        return [p for i, (x, y) in enumerate(zip(a, b)) for p in diff_paths(x, y, f"{path}[{i}]")]
+    return [] if a == b else [path]
+
+
+ORDER_ID_PATHS = [
+    f"[{i}]/function/parameters/properties/order_id/description"
+    for i, t in enumerate(tools.TOOLS) if t["function"]["name"] in ORDER_ID_TOOLS
+]
+
+
+def test_all_four_variants_exist():
+    assert tools.VARIANTS == ("flawed", "fixed", "desc_only", "errors_only")
+
+
+def test_definitions_differ_from_flawed_only_where_each_variant_claims():
+    flawed = tools.tools_for("flawed")
+    assert len(ORDER_ID_PATHS) == 3
+    assert diff_paths(flawed, tools.tools_for("fixed")) == ORDER_ID_PATHS
+    assert diff_paths(flawed, tools.tools_for("desc_only")) == ORDER_ID_PATHS
+    assert diff_paths(flawed, tools.tools_for("errors_only")) == []
+
+
+def test_desc_only_changes_no_error_message():
+    for site, name, tool, args, setup in error_changes.PROBES:
+        assert error_changes.run_probe("desc_only", tool, args, setup) == error_changes.run_probe("flawed", tool, args, setup), name
+    for name, tool, args, setup in error_changes.UNCHANGED_PROBES:
+        assert error_changes.run_probe("desc_only", tool, args, setup) == error_changes.run_probe("flawed", tool, args, setup)
+
+
+def test_errors_only_changes_exactly_the_errors_fixed_changes():
+    for site, name, tool, args, setup in error_changes.PROBES:
+        flawed_msg = error_changes.run_probe("flawed", tool, args, setup)
+        fixed_msg = error_changes.run_probe("fixed", tool, args, setup)
+        assert fixed_msg != flawed_msg, name
+        assert fixed_msg.startswith(flawed_msg.split(".")[0].split(" because")[0].split(", so")[0][:12]), name
+        assert error_changes.run_probe("errors_only", tool, args, setup) == fixed_msg, name
+    for name, tool, args, setup in error_changes.UNCHANGED_PROBES:
+        assert error_changes.run_probe("errors_only", tool, args, setup) == error_changes.run_probe("flawed", tool, args, setup)
+
+
+def test_probe_counts_match_the_error_sites_in_tools_py():
+    """Keep in sync with tools.py: 9 error sites, of which 8 change (12 messages) and 1 does not."""
+    assert len({p[0] for p in error_changes.PROBES}) == 8
+    assert len(error_changes.PROBES) == 12
+    assert len(error_changes.UNCHANGED_PROBES) == 1
+
+
+def test_errors_only_agent_sends_flawed_tools_and_fixed_errors(monkeypatch):
+    import agent
+    monkeypatch.setattr(agent, "get_client", lambda: _FakeLangfuse())
+    monkeypatch.setattr(agent, "propagate_attributes", lambda **kw: contextlib.nullcontext())
+    calls = []
+    agent.run_turn("x", "s", client=_fake_model(calls), model="m", variant="errors_only")
+    assert calls[0]["tools"] == tools.TOOLS
+    tool_msg = next(m for m in calls[1]["messages"] if m["role"] == "tool")
+    assert "cancel_order" in json.loads(tool_msg["content"])["error"]
+
+
+def test_agent_temperature_and_metadata_are_passed_through(monkeypatch):
+    import agent
+    seen = []
+
+    @contextlib.contextmanager
+    def fake_propagate(**kw):
+        seen.append(kw)
+        yield
+
+    monkeypatch.setattr(agent, "get_client", lambda: _FakeLangfuse())
+    monkeypatch.setattr(agent, "propagate_attributes", fake_propagate)
+    calls = []
+    agent.run_turn("x", "s", client=_fake_model(calls), model="m", variant="flawed", temperature=0.7,
+                   metadata={"experiment": "e", "run": 2})
+    assert calls[0]["temperature"] == 0.7
+    assert seen[0]["metadata"] == {"scenario_id": "s", "agent_variant": "flawed", "experiment": "e", "run": 2}

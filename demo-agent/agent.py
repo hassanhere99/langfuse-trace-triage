@@ -86,11 +86,13 @@ def _parse_arguments(raw):
     return args, None
 
 
-def run_turn(user_message, scenario_id, client=None, model=None, variant=None):
+def run_turn(user_message, scenario_id, client=None, model=None, variant=None, temperature=None, metadata=None):
     """Answer one user message. Returns a TurnResult.
 
-    variant is "flawed" or "fixed" (see tools.py); None reads AGENT_VARIANT, default flawed.
+    variant is one of tools.VARIANTS; None reads AGENT_VARIANT, default flawed.
+    temperature defaults to TEMPERATURE (0). metadata is merged into the trace metadata.
     """
+    temperature = TEMPERATURE if temperature is None else temperature
     variant = bookstore.resolve_variant(variant)
     tool_defs = bookstore.tools_for(variant)
     model = model or os.environ.get("DEMO_MODEL")
@@ -103,19 +105,19 @@ def run_turn(user_message, scenario_id, client=None, model=None, variant=None):
     tool_calls = []
     final_text = ""
 
-    with propagate_attributes(trace_name=TRACE_NAME, metadata={"scenario_id": scenario_id, "agent_variant": variant}):
+    with propagate_attributes(trace_name=TRACE_NAME, metadata={"scenario_id": scenario_id, "agent_variant": variant, **(metadata or {})}):
         with lf.start_as_current_observation(as_type="span", name="agent-run", input=user_message) as root:
             trace_id = lf.get_current_trace_id() or ""
             for n in range(1, MAX_ITERATIONS + 1):
                 with lf.start_as_current_observation(
                     as_type="generation", name=f"llm-call-{n}", model=model,
-                    model_parameters={"temperature": TEMPERATURE, "max_tokens": MAX_TOKENS},
+                    model_parameters={"temperature": temperature, "max_tokens": MAX_TOKENS},
                     input={"messages": [dict(m) for m in messages], "tools": tool_defs},
                 ) as gen:
                     try:
                         response = client.chat.completions.create(
                             model=model, messages=messages, tools=tool_defs,
-                            temperature=TEMPERATURE, max_tokens=MAX_TOKENS,
+                            temperature=temperature, max_tokens=MAX_TOKENS,
                         )
                     except Exception as exc:
                         gen.update(level="ERROR", status_message=f"{type(exc).__name__}: {exc}")
