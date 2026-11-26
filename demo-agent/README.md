@@ -6,9 +6,9 @@ The tools are flawed on purpose. Some scenarios fail, and the traces from those 
 
 ## Files
 
-- `tools.py`: fake in-memory books, orders and store policies, the five tool definitions (`TOOLS`, in OpenAI chat completions format), and `execute(name, args)`, which returns `(result_dict, is_error)`.
+- `tools.py`: fake in-memory books, orders and store policies, the five tool definitions (`TOOLS`, in OpenAI chat completions format; `tools_for(variant)` for the other variants), and `execute(name, args, variant)`, which returns `(result_dict, is_error)`.
 - `agent.py`: `run_turn(user_message, scenario_id)`, the tool-use loop (at most 6 model calls) with Langfuse instrumentation.
-- `run_demo.py`: runs the fixed scenarios, scores each trace, writes `last_run.json`.
+- `run_demo.py`: runs the fixed scenarios with the variant from `AGENT_VARIANT`, scores each trace, writes `last_run.json`.
 - `export_traces.py`: fetches the traces and writes stripped copies to `examples/traces/`.
 - `check_langfuse_project.py`: prints the Langfuse host, project name and project ID that the keys in `.env` belong to. It never prints the keys.
 - `check_model.py`: sends one tool-calling request to the endpoint in `.env` and checks the reply. It sends nothing to Langfuse.
@@ -21,6 +21,19 @@ The tools are flawed on purpose. Some scenarios fail, and the traces from those 
 2. **Underspecified argument.** The `order_id` argument is described only as "The order ID". The server accepts only the `BK-` form (`BK-10234`) and returns `Invalid order_id: "10234"` for a bare number.
 
 The store policy text (from `get_store_policy`) does state the real rules, so a model that looks it up can answer correctly. The system prompt is short and generic and says nothing about any tool.
+
+## Variants
+
+`AGENT_VARIANT` in `.env` (or the `variant` argument of `run_turn`) selects which version of the tools the agent gets. The default is `flawed`, which is exactly what the committed examples were generated from and must stay reproducible.
+
+| variant | `order_id` description | error messages |
+|---|---|---|
+| `flawed` (default) | "The order ID" | say what failed |
+| `desc_only` | states the format: `BK-` followed by 5 digits, e.g. `BK-10571` | unchanged |
+| `errors_only` | unchanged | say what to do next |
+| `fixed` | states the format | say what to do next |
+
+The `cancel_order` / `start_return` description overlap (flaw 1) is not fixed in any variant; it is the control of the before/after experiment. Order-ID validation, successful results and the `search_books` matching are identical in all four. Each trace records its variant in `metadata.agent_variant`. `python demo-agent/tools.py --dump-tools --variant fixed` prints a variant's tool definitions. The error messages that `fixed` and `errors_only` change are listed, before and after, in [experiments/results_after.md](../experiments/results_after.md#error-messages-the-fix-changes). The experiment itself is run by `experiments/run_experiment.py`.
 
 ## Scenarios
 
@@ -44,6 +57,7 @@ These are designs, not results. What a given model actually does is in the expor
 | `DEMO_MODEL` | yes | model name on the endpoint, for example an Ollama model tag |
 | `OPENAI_BASE_URL` | no | defaults to `http://localhost:11434/v1` (Ollama) |
 | `OPENAI_API_KEY` | no | defaults to `ollama`, a dummy value that Ollama ignores |
+| `AGENT_VARIANT` | no | `flawed` (default), `fixed`, `desc_only` or `errors_only`; see Variants |
 | `LANGFUSE_PUBLIC_KEY` | yes | |
 | `LANGFUSE_SECRET_KEY` | yes | |
 | `LANGFUSE_HOST` | no | defaults to `https://cloud.langfuse.com`; US is `https://us.cloud.langfuse.com` |
