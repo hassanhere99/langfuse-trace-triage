@@ -4,7 +4,7 @@ Works with any OpenAI-compatible endpoint. The endpoint, key and model come only
 environment (OPENAI_BASE_URL, OPENAI_API_KEY, DEMO_MODEL), normally set in the repo-root .env.
 
 Trace layout (one trace per user message):
-    trace name   bookstore-support, metadata.scenario_id
+    trace name   bookstore-support, metadata.scenario_id and metadata.agent_variant (flawed|fixed)
     agent-run    root span; its input/output become the trace input/output
       llm-call-1 GENERATION, input {"messages", "tools"} exactly as sent (system prompt is the first
                  message), output = the assistant message {"role", "content", "tool_calls"}
@@ -86,8 +86,13 @@ def _parse_arguments(raw):
     return args, None
 
 
-def run_turn(user_message, scenario_id, client=None, model=None):
-    """Answer one user message. Returns a TurnResult."""
+def run_turn(user_message, scenario_id, client=None, model=None, variant=None):
+    """Answer one user message. Returns a TurnResult.
+
+    variant is "flawed" or "fixed" (see tools.py); None reads AGENT_VARIANT, default flawed.
+    """
+    variant = bookstore.resolve_variant(variant)
+    tool_defs = bookstore.tools_for(variant)
     model = model or os.environ.get("DEMO_MODEL")
     if not model:
         raise RuntimeError("DEMO_MODEL is not set")
@@ -98,18 +103,18 @@ def run_turn(user_message, scenario_id, client=None, model=None):
     tool_calls = []
     final_text = ""
 
-    with propagate_attributes(trace_name=TRACE_NAME, metadata={"scenario_id": scenario_id}):
+    with propagate_attributes(trace_name=TRACE_NAME, metadata={"scenario_id": scenario_id, "agent_variant": variant}):
         with lf.start_as_current_observation(as_type="span", name="agent-run", input=user_message) as root:
             trace_id = lf.get_current_trace_id() or ""
             for n in range(1, MAX_ITERATIONS + 1):
                 with lf.start_as_current_observation(
                     as_type="generation", name=f"llm-call-{n}", model=model,
                     model_parameters={"temperature": TEMPERATURE, "max_tokens": MAX_TOKENS},
-                    input={"messages": [dict(m) for m in messages], "tools": bookstore.TOOLS},
+                    input={"messages": [dict(m) for m in messages], "tools": tool_defs},
                 ) as gen:
                     try:
                         response = client.chat.completions.create(
-                            model=model, messages=messages, tools=bookstore.TOOLS,
+                            model=model, messages=messages, tools=tool_defs,
                             temperature=TEMPERATURE, max_tokens=MAX_TOKENS,
                         )
                     except Exception as exc:
@@ -141,7 +146,7 @@ def run_turn(user_message, scenario_id, client=None, model=None):
                         if parse_error:
                             result, is_error = {"error": parse_error}, True
                         else:
-                            result, is_error = bookstore.execute(name, args)
+                            result, is_error = bookstore.execute(name, args, variant)
                         if is_error:
                             obs.update(output=result, level="ERROR", status_message=result.get("error", "tool error"))
                         else:
