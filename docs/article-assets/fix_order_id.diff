@@ -1,0 +1,169 @@
+diff --git a/demo-agent/tools.py b/demo-agent/tools.py
+index b474b9b..a35ec24 100644
+--- a/demo-agent/tools.py
++++ b/demo-agent/tools.py
+@@ -1,9 +1,20 @@
+ """Fake in-memory bookstore backend and the tool definitions the demo agent exposes.
+ 
+ The tools are flawed on purpose, so the demo agent produces real failures for the
+-triage skill to find. Do not "fix" these without updating demo-agent/README.md and
++triage skill to find. The flawed behaviour is the default and must stay reproducible: it is
++what examples/ was generated from. Do not edit it without updating demo-agent/README.md and
+ regenerating examples/promptfoo/tools.json.
+ 
++Variants (AGENT_VARIANT=flawed|fixed, default flawed)
++    flawed  the tools exactly as the committed examples were generated.
++    fixed   two changes, nothing else:
++            1. the order_id description of every tool that takes one states the format
++               (BK- followed by 5 digits, e.g. BK-10571);
++            2. (next commit) error messages say what to do next, not only what failed.
++            The cancel_order / start_return description overlap (flaw a) is NOT fixed. It is
++            the control of the experiment. The search_books matching limitation is not fixed
++            either (see experiments/discovered_bugs.md).
++
+ Deliberate flaws:
+ 
+ (a) Overlapping descriptions. cancel_order and start_return are both described
+@@ -21,10 +32,13 @@ Server behaviour that makes the flaws visible:
+ 
+ Usage:
+     python demo-agent/tools.py --dump-tools > examples/promptfoo/tools.json
++    python demo-agent/tools.py --dump-tools --variant fixed
+ """
+ from __future__ import annotations
+ 
++import copy
+ import json
++import os
+ import re
+ import sys
+ 
+@@ -139,6 +153,33 @@ TOOLS = [
+     ),
+ ]
+ 
++# --- Variants ---------------------------------------------------------------------------
++
++VARIANTS = ("flawed", "fixed")
++ORDER_ID_FIXED = "The order ID. Format: BK- followed by 5 digits, e.g. BK-10571."
++
++
++def resolve_variant(value=None):
++    """The variant to use: the argument, else AGENT_VARIANT from the environment, else flawed."""
++    raw = value if value is not None else os.environ.get("AGENT_VARIANT")
++    variant = (raw or "flawed").strip().lower()
++    if variant not in VARIANTS:
++        raise ValueError(f"AGENT_VARIANT must be one of {', '.join(VARIANTS)}, got {raw!r}")
++    return variant
++
++
++def tools_for(variant=None):
++    """Tool definitions for a variant. The flawed list is TOOLS itself; fixed is a modified copy."""
++    if resolve_variant(variant) == "flawed":
++        return TOOLS
++    fixed = copy.deepcopy(TOOLS)
++    for tool in fixed:
++        props = tool["function"]["parameters"]["properties"]
++        if "order_id" in props:
++            props["order_id"]["description"] = ORDER_ID_FIXED
++    return fixed
++
++
+ # --- Implementations --------------------------------------------------------------------
+ 
+ _ORDER_ID_RE = re.compile(r"^BK-\d+$")
+@@ -148,7 +189,7 @@ def _err(message):
+     return {"error": message}, True
+ 
+ 
+-def _find_order(args):
++def _find_order(args, fixed):
+     order_id = args.get("order_id")
+     if not isinstance(order_id, str) or not order_id:
+         return None, _err("Missing required argument: order_id")
+@@ -161,7 +202,7 @@ def _find_order(args):
+     return order, None
+ 
+ 
+-def search_books(args):
++def search_books(args, fixed=False):
+     query = args.get("query")
+     if not isinstance(query, str) or not query.strip():
+         return _err("Missing required argument: query")
+@@ -170,15 +211,15 @@ def search_books(args):
+     return {"query": query, "results": hits[:5], "count": len(hits[:5])}, False
+ 
+ 
+-def get_order_status(args):
+-    order, err = _find_order(args)
++def get_order_status(args, fixed=False):
++    order, err = _find_order(args, fixed)
+     if err:
+         return err
+     return dict(order), False
+ 
+ 
+-def cancel_order(args):
+-    order, err = _find_order(args)
++def cancel_order(args, fixed=False):
++    order, err = _find_order(args, fixed)
+     if err:
+         return err
+     if order["status"] != "processing":
+@@ -187,8 +228,8 @@ def cancel_order(args):
+     return {"order_id": order["order_id"], "status": "cancelled", "refund": "Full refund issued to the original payment method."}, False
+ 
+ 
+-def start_return(args):
+-    order, err = _find_order(args)
++def start_return(args, fixed=False):
++    order, err = _find_order(args, fixed)
+     if err:
+         return err
+     if order["status"] != "delivered":
+@@ -200,7 +241,7 @@ def start_return(args):
+     }, False
+ 
+ 
+-def get_store_policy(args):
++def get_store_policy(args, fixed=False):
+     topic = args.get("topic")
+     if topic not in POLICIES:
+         return _err(f"Unknown policy topic: {topic!r}. Valid topics: {', '.join(POLICIES)}")
+@@ -216,14 +257,18 @@ _IMPLS = {
+ }
+ 
+ 
+-def execute(name, args):
+-    """Run a tool. Returns (result_dict, is_error). Errors are {"error": "..."} with is_error True."""
++def execute(name, args, variant=None):
++    """Run a tool. Returns (result_dict, is_error). Errors are {"error": "..."} with is_error True.
++
++    variant is flawed or fixed; None means AGENT_VARIANT from the environment, default flawed.
++    """
++    fixed = resolve_variant(variant) == "fixed"
+     impl = _IMPLS.get(name)
+     if impl is None:
+         return {"error": f"Unknown tool: {name}"}, True
+     if not isinstance(args, dict):
+         return {"error": "Tool arguments must be an object"}, True
+-    return impl(args)
++    return impl(args, fixed)
+ 
+ 
+ def reset_state():
+@@ -236,9 +281,11 @@ _INITIAL_STATUS = {oid: o["status"] for oid, o in ORDERS.items()}
+ 
+ 
+ if __name__ == "__main__":
+-    if "--dump-tools" in sys.argv[1:]:
+-        json.dump(TOOLS, sys.stdout, indent=2)
++    argv = sys.argv[1:]
++    if "--dump-tools" in argv:
++        variant = argv[argv.index("--variant") + 1] if "--variant" in argv[:-1] else "flawed"
++        json.dump(tools_for(variant), sys.stdout, indent=2)
+         sys.stdout.write("\n")
+     else:
+-        sys.stderr.write("usage: python demo-agent/tools.py --dump-tools > examples/promptfoo/tools.json\n")
++        sys.stderr.write("usage: python demo-agent/tools.py --dump-tools [--variant flawed|fixed] > tools.json\n")
+         sys.exit(2)

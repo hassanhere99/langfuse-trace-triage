@@ -1,0 +1,104 @@
+diff --git a/demo-agent/tools.py b/demo-agent/tools.py
+index a35ec24..eb64234 100644
+--- a/demo-agent/tools.py
++++ b/demo-agent/tools.py
+@@ -10,7 +10,7 @@ Variants (AGENT_VARIANT=flawed|fixed, default flawed)
+     fixed   two changes, nothing else:
+             1. the order_id description of every tool that takes one states the format
+                (BK- followed by 5 digits, e.g. BK-10571);
+-            2. (next commit) error messages say what to do next, not only what failed.
++            2. error messages say what to do next, not only what failed.
+             The cancel_order / start_return description overlap (flaw a) is NOT fixed. It is
+             the control of the experiment. The search_books matching limitation is not fixed
+             either (see experiments/discovered_bugs.md).
+@@ -192,20 +192,32 @@ def _err(message):
+ def _find_order(args, fixed):
+     order_id = args.get("order_id")
+     if not isinstance(order_id, str) or not order_id:
+-        return None, _err("Missing required argument: order_id")
++        msg = "Missing required argument: order_id"
++        if fixed:
++            msg += ". Pass the order ID: BK- followed by 5 digits, e.g. BK-10571."
++        return None, _err(msg)
+     # Flaw (b): only the "BK-" prefixed form is accepted. A bare number is rejected.
+     if not _ORDER_ID_RE.match(order_id):
+-        return None, _err(f'Invalid order_id: "{order_id}"')
++        msg = f'Invalid order_id: "{order_id}"'
++        if fixed:
++            msg += ". Order IDs are BK- followed by 5 digits, e.g. BK-10571."
++        return None, _err(msg)
+     order = ORDERS.get(order_id)
+     if order is None:
+-        return None, _err(f"Order not found: {order_id}")
++        msg = f"Order not found: {order_id}"
++        if fixed:
++            msg += ". Check the order ID with the customer and try again."
++        return None, _err(msg)
+     return order, None
+ 
+ 
+ def search_books(args, fixed=False):
+     query = args.get("query")
+     if not isinstance(query, str) or not query.strip():
+-        return _err("Missing required argument: query")
++        msg = "Missing required argument: query"
++        if fixed:
++            msg += ". Pass a title, author name or ISBN."
++        return _err(msg)
+     q = query.strip().lower()
+     hits = [b for b in BOOKS if q in b["title"].lower() or q in b["author"].lower() or q == b["isbn"]]
+     return {"query": query, "results": hits[:5], "count": len(hits[:5])}, False
+@@ -218,11 +230,26 @@ def get_order_status(args, fixed=False):
+     return dict(order), False
+ 
+ 
++# fixed variant: what the customer or agent can do next, by order status
++_CANCEL_NEXT = {
++    "shipped": "Order {id} has shipped, so it can't be cancelled. A return can be started once it has been delivered.",
++    "delivered": "Order {id} has been delivered, so it can't be cancelled. It can be returned instead with start_return.",
++    "cancelled": "Order {id} is already cancelled. No further action is needed.",
++}
++_RETURN_NEXT = {
++    "processing": "Order {id} has not shipped, so it can't be returned. It can be cancelled instead with cancel_order.",
++    "shipped": "Order {id} has shipped but has not been delivered, so it can't be returned yet. A return can be started once it has been delivered.",
++    "cancelled": "Order {id} was cancelled, so it can't be returned. No further action is needed.",
++}
++
++
+ def cancel_order(args, fixed=False):
+     order, err = _find_order(args, fixed)
+     if err:
+         return err
+     if order["status"] != "processing":
++        if fixed and order["status"] in _CANCEL_NEXT:
++            return _err(_CANCEL_NEXT[order["status"]].format(id=order["order_id"]))
+         return _err(f"Order {order['order_id']} cannot be cancelled because its status is {order['status']}.")
+     order["status"] = "cancelled"
+     return {"order_id": order["order_id"], "status": "cancelled", "refund": "Full refund issued to the original payment method."}, False
+@@ -233,6 +260,8 @@ def start_return(args, fixed=False):
+     if err:
+         return err
+     if order["status"] != "delivered":
++        if fixed and order["status"] in _RETURN_NEXT:
++            return _err(_RETURN_NEXT[order["status"]].format(id=order["order_id"]))
+         return _err(f"Order {order['order_id']} is not eligible for return because its status is {order['status']}.")
+     return {
+         "order_id": order["order_id"], "return_id": "RT-" + order["order_id"][3:],
+@@ -265,9 +294,15 @@ def execute(name, args, variant=None):
+     fixed = resolve_variant(variant) == "fixed"
+     impl = _IMPLS.get(name)
+     if impl is None:
+-        return {"error": f"Unknown tool: {name}"}, True
++        msg = f"Unknown tool: {name}"
++        if fixed:
++            msg += f". Available tools: {', '.join(_IMPLS)}."
++        return {"error": msg}, True
+     if not isinstance(args, dict):
+-        return {"error": "Tool arguments must be an object"}, True
++        msg = "Tool arguments must be an object"
++        if fixed:
++            msg += ', for example {"query": "Dune"}.'
++        return {"error": msg}, True
+     return impl(args, fixed)
+ 
+ 
