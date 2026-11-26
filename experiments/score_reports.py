@@ -42,6 +42,7 @@ LOCATIONS = ("tool_description", "tool_schema", "error_message", "system_prompt"
 _FINDING_RE = re.compile(r"^###\s+\d+\.\s+([a-z_]+)\s*\(confidence:\s*(high|medium|low)", re.M | re.I)
 _SUMMARY_RE = re.compile(r"^-\s*Summary:\s*(.+)$", re.M)
 _LOCATION_RE = re.compile(r"^(?:Location|fix_location):\s*(.+)$", re.M | re.I)
+_FIX_LOCATION_FIELD_RE = re.compile(r"^fix_location:\s*(.+)$", re.M | re.I)
 _FIX_SECTION_RE = re.compile(r"^##\s+Suggested fix\s*$(.*?)(?=^##\s|\Z)", re.M | re.S)
 
 # (regex on the Location text with parentheses removed, normalised value)
@@ -97,7 +98,8 @@ def parse_report(text):
     section = _FIX_SECTION_RE.search(text)
     locations = ["none"]
     if section:
-        loc = _LOCATION_RE.search(section.group(1))
+        # The explicit field (added to the skill after the committed reports were made) wins over the prose line.
+        loc = _FIX_LOCATION_FIELD_RE.search(section.group(1)) or _LOCATION_RE.search(section.group(1))
         if loc:
             locations = parse_locations(loc.group(1))
     summary = _SUMMARY_RE.search(text)
