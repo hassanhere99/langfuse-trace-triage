@@ -1,0 +1,34 @@
+{
+  "experiment": "before-after-2026-11",
+  "plan": "recheck",
+  "model": "llama3.2:3b",
+  "base_url": "http://localhost:11434/v1",
+  "ollama_version": "0.40.18",
+  "temperature": 0,
+  "seed": null,
+  "max_tokens": 4096,
+  "max_iterations": 6,
+  "runs_per_cell": 3,
+  "variants": {
+    "flawed": [
+      "undo_delivered_order"
+    ],
+    "fixed": [
+      "undo_delivered_order"
+    ]
+  },
+  "system_prompt": "You are a customer support assistant for an online bookstore. Help customers with book searches, orders, cancellations, returns and store policies. Be concise and polite.",
+  "packages": {
+    "openai": "3.60.0",
+    "langfuse": "5.2.0"
+  },
+  "python": "3.13.7",
+  "endpoint_vars_defaulted": [
+    "OPENAI_BASE_URL",
+    "OPENAI_API_KEY"
+  ],
+  "env_demo_model_ignored": "claude-haiku-5-5",
+  "started_at": "2026-11-27T11:47:23+00:00",
+  "finished_at": "2026-11-27T11:49:01+00:00",
+  "last_batch_seconds": 98
+}
