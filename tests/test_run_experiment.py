@@ -9,18 +9,18 @@ import run_experiment as rx
 CONTROLS = {"search_by_title", "shipping_policy", "return_window_from_memory"}
 
 
-def test_main_plan_is_72_runs_with_the_requested_cells():
+def test_main_plan_is_78_runs_with_the_requested_cells():
     plan = rx.PLANS["main"]
     items = rx.plan_runs(plan)
-    assert len(items) == 72 and len(set(items)) == 72
+    assert len(items) == 78 and len(set(items)) == 78
     assert plan["temperature"] == 0 and plan["runs"] == 3
     by_variant = Counter(v for _, _, v in items)
-    assert by_variant == {"flawed": 24, "fixed": 24, "desc_only": 12, "errors_only": 12}
+    assert by_variant == {"flawed": 24, "fixed": 24, "desc_only": 15, "errors_only": 15}
     for variant in ("flawed", "fixed"):
         assert {s for _, s, v in items if v == variant} == set(rx.SCENARIO_ORDER)
     for variant in ("desc_only", "errors_only"):
         assert {s for _, s, v in items if v == variant} == {
-            "cancel_bare_number", "cancel_shipped_order", "return_processing_order", "unneeded_lookup"}
+            "cancel_bare_number", "cancel_shipped_order", "return_processing_order", "unneeded_lookup", "undo_delivered_order"}
     assert all(Counter(r for r, s, v in items if (s, v) == cell) == {1: 1, 2: 1, 3: 1}
                for cell in {(s, v) for _, s, v in items})
 
@@ -128,3 +128,16 @@ def test_settings_record_the_pinned_model_not_the_env_one():
     import inspect
     src = inspect.getsource(rx.do_runs)
     assert src.index("describe(*get_projects())") < src.rindex('os.environ["DEMO_MODEL"] = MODEL') < src.index("settings_for(plan_name, plan)")
+
+
+def test_recheck_plan_is_the_ollama_version_control():
+    plan = rx.PLANS["recheck"]
+    items = rx.plan_runs(plan)
+    assert len(items) == 6 and plan["temperature"] == 0 and plan["out"].name == "runs_recheck"
+    assert {(s, v) for _, s, v in items} == {("undo_delivered_order", "flawed"), ("undo_delivered_order", "fixed")}
+
+
+def test_extension_cells_are_in_the_main_plan_and_keep_the_run_keys_of_the_first_72():
+    items = rx.plan_runs(rx.PLANS["main"])
+    assert {(s, v) for _, s, v in items if s == "undo_delivered_order"} == {
+        ("undo_delivered_order", v) for v in ("flawed", "fixed", "desc_only", "errors_only")}

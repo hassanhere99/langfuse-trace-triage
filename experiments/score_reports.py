@@ -145,6 +145,7 @@ def score_one(truth, parsed):
         "fully_correct": label_ok and bool(truth.get("evidence_correct", True)),
         "citations": parsed.get("citations", []),
         "location_ok": locations[0] == expected_loc,
+        "location_any": expected_loc in locations,
         "clean": clean,
         "false_positive": clean and labels != ["no_failure"],
         "worst_wrong": worst_wrong_findings(labels, parsed["confidences"], expected_label) if clean else [],
@@ -165,6 +166,9 @@ def totals(rows):
         "fully_correct": sum(r["fully_correct"] for r in rows),
         "evidence_in_bounds": sum(not r["citations"] for r in rows),
         "location": sum(r["location_ok"] for r in rows),
+        # fix-location accuracy on traces that actually failed: the expected-clean traces are left out
+        "location_failed": (sum(r["location_ok"] for r in failing), len(failing)),
+        "location_failed_any": (sum(r["location_any"] for r in failing), len(failing)),
         "label_firm": (sum(r["label_ok"] for r in firm), len(firm)),
         "location_firm": (sum(r["location_ok"] for r in firm), len(firm)),
         "false_pos": (sum(r["false_positive"] for r in clean), len(clean)),

@@ -157,6 +157,8 @@ def render_totals(label, rows, adjusted_rows=None):
         row("Label accuracy (primary finding)", lambda t, n, d, a, b: f"{t['label']}/{n}"),
         row("Fully correct (label right, every quote found in the trace)", lambda t, n, d, a, b: f"{t['fully_correct']}/{n}"),
         row("Fix-location accuracy (primary location)", lambda t, n, d, a, b: f"{t['location']}/{n}"),
+        row("Fix-location accuracy on traces that failed, primary location", lambda t, n, d, a, b: f"{t['location_failed'][0]}/{t['location_failed'][1]}"),
+        row("Fix-location accuracy on traces that failed, right location named anywhere", lambda t, n, d, a, b: f"{t['location_failed_any'][0]}/{t['location_failed_any'][1]}"),
         row("Label accuracy without ambiguous rows", lambda t, n, d, a, b: f"{t['label_firm'][0]}/{t['label_firm'][1]}"),
         row("Fix-location accuracy without ambiguous rows", lambda t, n, d, a, b: f"{t['location_firm'][0]}/{t['location_firm'][1]}"),
         row("Reports whose evidence stayed inside the trace", lambda t, n, d, a, b: f"{t['evidence_in_bounds']}/{n}"),
@@ -165,4 +167,30 @@ def render_totals(label, rows, adjusted_rows=None):
         row("System-prompt edit suggested, failures involving one tool", lambda t, n, d, a, b: f"{t['sys_prompt_single'][0]} of {t['sys_prompt_single'][1]}"),
         row("System-prompt edit suggested, any report", lambda t, n, d, a, b: f"{t['sys_prompt_any']} of {n}"),
     ]
+    return "\n".join(lines) + "\n"
+
+
+def location_by_scenario(rows):
+    """Per scenario, on traces that actually failed (expected label is not no_failure):
+    [(scenario, traces, primary location right, right location named anywhere)]. Scenarios with no failed trace are left out."""
+    out = []
+    for scenario in dict.fromkeys(r["scenario"] for r in rows):
+        failed = [r for r in rows if r["scenario"] == scenario and not r["clean"]]
+        if failed:
+            out.append((scenario, len(failed), sum(r["location_ok"] for r in failed), sum(r["location_any"] for r in failed)))
+    return out
+
+
+def render_location_by_scenario(rows):
+    """Markdown table of location_by_scenario with a total row; the expected location is the one in the rules."""
+    expected = {}
+    for r in rows:
+        if not r["clean"]:
+            expected.setdefault(r["scenario"], set()).add(r["expected_location"])
+    lines = ["| Scenario | Failed traces | Expected location | Primary location right | Right location named anywhere |", "|---|---|---|---|---|"]
+    tot = [0, 0, 0]
+    for scenario, n, prim, anyl in location_by_scenario(rows):
+        lines.append(f"| {scenario} | {n} | {', '.join(f'`{e}`' for e in sorted(expected[scenario]))} | {prim}/{n} | {anyl}/{n} |")
+        tot = [tot[0] + n, tot[1] + prim, tot[2] + anyl]
+    lines.append(f"| **All failed traces** | **{tot[0]}** | | **{tot[1]}/{tot[0]}** | **{tot[2]}/{tot[0]}** |")
     return "\n".join(lines) + "\n"

@@ -97,3 +97,44 @@ def test_no_failure_found_summary_under_an_inconclusive_heading_is_read_as_no_fa
     strict = sn.score_variant("fixed", [r], rep, GT, repo_root=tmp_path)
     adj = sn.score_variant("fixed", [r], rep, GT, repo_root=tmp_path, adjusted=True)
     assert strict[0]["false_positive"] is True and adj[0]["false_positive"] is False
+
+
+def _row(scenario, expected_label, expected_loc, locations):
+    truth = {"scenario": scenario, "expected_failure_type": expected_label, "expected_fix_location": expected_loc,
+             "tools_involved": ["cancel_order"], "ambiguous": False, "evidence_correct": True}
+    row = sr.score_one(truth, {"labels": ["x"], "confidences": ["high"], "locations": locations, "citations": []})
+    row.update(expected_location=expected_loc, run=1)
+    return row
+
+
+def test_fix_location_on_failed_traces_excludes_clean_ones_and_has_a_lenient_reading():
+    rows = [
+        _row("a", "wrong_arguments", "tool_schema", ["tool_schema", "error_message"]),   # primary right
+        _row("a", "wrong_arguments", "tool_schema", ["error_message", "tool_schema"]),   # right one only named second
+        _row("a", "wrong_arguments", "tool_schema", ["system_prompt"]),                   # wrong
+        _row("b", "tool_error_mishandled", "error_message", ["error_message"]),
+        _row("clean", "no_failure", "none", ["none"]),                                    # must not count
+        _row("clean", "no_failure", "none", ["tool_description"]),                        # must not count
+    ]
+    t = sr.totals(rows)
+    assert t["location_failed"] == (2, 4)
+    assert t["location_failed_any"] == (3, 4)
+    assert t["location"] == 3  # the all-traces figure still counts the clean one that got `none`
+    assert sn.location_by_scenario(rows) == [("a", 3, 1, 2), ("b", 1, 1, 1)]
+    table = sn.render_location_by_scenario(rows)
+    assert "| a | 3 | `tool_schema` | 1/3 | 2/3 |" in table
+    assert "| **All failed traces** | **4** | | **2/4** | **3/4** |" in table
+    assert "clean" not in table
+
+
+def test_totals_table_shows_the_two_failed_trace_rows():
+    rows = [_row("a", "wrong_arguments", "tool_schema", ["tool_schema"])]
+    text = sn.render_totals("x", rows)
+    assert "Fix-location accuracy on traces that failed, primary location | 1/1 | 1/1" in text
+    assert "Fix-location accuracy on traces that failed, right location named anywhere | 1/1 | 1/1" in text
+
+
+def test_committed_reports_score_still_has_the_location_any_key():
+    truth = sr.load_ground_truth(ROOT / "experiments" / "ground_truth.yaml")
+    rows = [sr.score_one(t, sr.parse_report((ROOT / "examples" / "reports" / f"{t['trace_id']}.md").read_text())) for t in truth]
+    assert sr.totals(rows)["location_failed"] == (4, 4)

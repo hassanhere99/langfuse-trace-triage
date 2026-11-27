@@ -112,7 +112,75 @@ def answers(runs):
     ebf = f("flawed", "cancel_bare_number", "flaw_triggered"), f("errors_only", "cancel_bare_number", "flaw_triggered")
     lines.append("3. **Does either fix what the other was meant to fix?** `desc_only` on the post-error scenarios: " + "; ".join(other)
                  + f". `errors_only` on `cancel_bare_number`: failures {arrow(*eb)}, bare-number calls {arrow(*ebf)}.")
+    lines.append("4. **Which fix caused `fixed` to fail `undo_delivered_order`?** " + undo_verdict(runs))
     return lines
+
+
+def first_tools(rs):
+    """e.g. "start_return x3" or "cancel_order x2, start_return x1"."""
+    counts = {}
+    for r in rs:
+        counts[r.get("first_tool") or "no tool"] = counts.get(r.get("first_tool") or "no tool", 0) + 1
+    return ", ".join(f"`{k}` x{v}" for k, v in sorted(counts.items(), key=lambda kv: (-kv[1], kv[0])))
+
+
+def undo_table(runs):
+    out = ["| Variant | `order_id` description | Error messages | Failures | Planted flaw triggered (`cancel_order` called) | First tool call |",
+           "|---|---|---|---|---|---|"]
+    spec = {"flawed": ("original", "original"), "desc_only": ("format stated", "original"),
+            "errors_only": ("original", "what to do next"), "fixed": ("format stated", "what to do next")}
+    for v in ("flawed", "desc_only", "errors_only", "fixed"):
+        rs = cell(runs, v, "undo_delivered_order")
+        if rs:
+            out.append(f"| {v} | {spec[v][0]} | {spec[v][1]} | {fraction(rs, 'failure')} | {fraction(rs, 'flaw_triggered')} | {first_tools(rs)} |")
+    return "\n".join(out) + "\n"
+
+
+def undo_verdict(runs):
+    """One sentence saying which variant reproduces the undo_delivered_order regression."""
+    f = {v: cell(runs, v, "undo_delivered_order") for v in ("flawed", "fixed", "desc_only", "errors_only")}
+    if not all(f.values()):
+        return "desc_only and errors_only were not both run on this scenario, so the cause is not measured."
+    bad = {v: count(rs, "failure") for v, rs in f.items()}
+    n = {v: len(rs) for v, rs in f.items()}
+    reproduces = [v for v in ("desc_only", "errors_only") if bad[v] > bad["flawed"]]
+    base = f"Failures: flawed {bad['flawed']}/{n['flawed']}, desc_only {bad['desc_only']}/{n['desc_only']}, errors_only {bad['errors_only']}/{n['errors_only']}, fixed {bad['fixed']}/{n['fixed']}."
+    if reproduces == ["desc_only"]:
+        return base + " The `order_id` description change alone reproduces the regression; the error-message change alone does not."
+    if reproduces == ["errors_only"]:
+        return base + " The error-message change alone reproduces the regression; the description change alone does not."
+    if len(reproduces) == 2:
+        return base + " Both changes reproduce the regression on their own."
+    if bad["fixed"] > bad["flawed"]:
+        return base + " Neither change alone reproduces the regression, so the two fixes only cause it in combination."
+    return base + " The regression did not appear."
+
+
+def recheck_section(runs):
+    data = load_index(ROOT / "experiments" / "runs_recheck" / "index.json")
+    if not data:
+        return []
+    rr = data["runs"]
+    out = ["## Did the Ollama update change anything?\n"]
+    main_set = (data["settings"].get("ollama_version"), load_index(ROOT / "experiments" / "runs" / "settings.json")["ollama_version"])
+    out.append(f"Ollama was updated between the first 72 runs (version {main_set[1]}) and the last 6 (version {load_index(ROOT / 'experiments' / 'runs' / 'settings.json')['extension']['ollama_version']}), "
+               "with the same model file (same ID in `ollama list`). To check whether the update moved any output, `flawed` and `fixed` on `undo_delivered_order` "
+               f"were run again on version {main_set[0]} (3 runs each, `experiments/runs_recheck/`).\n")
+    same = []
+    for v in ("flawed", "fixed"):
+        a = sorted(cell(runs, v, "undo_delivered_order"), key=lambda r: r["run"])
+        b = sorted(cell(rr, v, "undo_delivered_order"), key=lambda r: r["run"])
+        same.append(f"`{v}`: failures {fraction(a, 'failure')} before the update, {fraction(b, 'failure')} after; first tool {first_tools(a)} before, {first_tools(b)} after; "
+                    f"same tool calls run for run: {sum(tuple(x['tools']) == tuple(y['tools']) for x, y in zip(a, b))} of {len(b)}; "
+                    f"same answer text run for run: {sum(x['final_text'] == y['final_text'] for x, y in zip(a, b))} of {len(b)}")
+    out.append("- " + "\n- ".join(same) + "\n")
+    moved = any(x["final_text"] != y["final_text"] for v in ("flawed", "fixed")
+                for x, y in zip(sorted(cell(runs, v, "undo_delivered_order"), key=lambda r: r["run"]),
+                                sorted(cell(rr, v, "undo_delivered_order"), key=lambda r: r["run"])))
+    out.append("The update changed the wording of some answers" + (" (so outputs are not byte-identical across the two versions)" if moved else "")
+               + ", but not which tool was called first or whether a run failed, which is what the comparison above uses.\n" if moved else
+               "No output changed.\n")
+    return out
 
 
 def timing(runs):
@@ -175,7 +243,8 @@ def build(notes_path=ROOT / "experiments" / "results_after_notes.md"):
         f"Generated by `experiments/aggregate.py`. Model `{s['model']}` on local Ollama {s.get('ollama_version')}, "
         f"temperature {s['temperature']}, seed {s['seed']}, max_tokens {s['max_tokens']}, up to {s['max_iterations']} model calls per turn, "
         f"{s['runs_per_cell']} runs per cell, experiment tag `{s['experiment']}` in every trace's metadata. "
-        f"Runs went in run-major order (run 1 of every cell, then run 2, then run 3).\n")
+        f"Runs went in run-major order (run 1 of every cell, then run 2, then run 3). The last 6 runs (`undo_delivered_order` on `desc_only` and `errors_only`) were added afterwards, "
+        f"on Ollama {s.get('extension', {}).get('ollama_version', s.get('ollama_version'))} instead of {s.get('ollama_version')}; see \"Did the Ollama update change anything?\".\n")
     if s.get("env_demo_model_ignored"):
         out.append(f"`.env` set `DEMO_MODEL={s['env_demo_model_ignored']}`; the runner ignored that and used `{s['model']}`. `.env` was not edited.\n")
     out.append("## Failure rates\n")
@@ -197,6 +266,9 @@ def build(notes_path=ROOT / "experiments" / "results_after_notes.md"):
     out.append("## The two fixes separately\n")
     out.extend(answers(runs))
     out.append("")
+    out.append("### `undo_delivered_order` by variant\n")
+    out.append(undo_table(runs))
+    out.extend(recheck_section(runs))
     cells, identical, differing, flawed_same = determinism(runs, baseline)
     out.append("## Are the runs identical?\n")
     out.append(f"At temperature 0 with no seed, {len(identical)} of {len(cells)} cells gave 3 identical runs (same tool calls, same final answer text). "
@@ -220,7 +292,10 @@ def build(notes_path=ROOT / "experiments" / "results_after_notes.md"):
     out.append("## Skill accuracy on the new traces\n")
     out.append("Same scoring as `results_before.md`, with the differences listed in `experiments/score_new_reports.py` (expected labels from "
                "rules committed before triage, evidence checked by quote verification). † = ambiguous expected label. "
-               "The skill was frozen: the version with the trace-only rule. Triage inputs had the experiment's own metadata removed.\n")
+               "The skill was frozen: the version with the trace-only rule. Triage inputs had the experiment's own metadata removed. "
+               "\"Fix-location accuracy on traces that failed\" leaves out the expected-clean traces. It is only a hard test on the `flawed` traces: "
+               "on `fixed` traces the rules expect location `none` for a failure the fix should have prevented (`model_error`), which a report that "
+               "sees no failure also gets right.\n")
     for variant, (rows, adj) in by_variant.items():
         out.append(f"### {variant} traces\n")
         if not rows:
@@ -228,6 +303,10 @@ def build(notes_path=ROOT / "experiments" / "results_after_notes.md"):
             continue
         out.append(sn.render_rows(rows))
         out.append(sn.render_totals(f"{variant}: totals", rows, adj))
+        if variant == "flawed":
+            out.append("**Fix-location accuracy by scenario, `flawed` traces that actually failed** (the expected-clean traces are excluded; "
+                       "\"primary\" is the first location the report names, \"anywhere\" is any location it names):\n")
+            out.append(sn.render_location_by_scenario(rows))
     out.append("### Labels by variant\n")
     labels = {v: sorted({l for r in rows for l in r["labels"] if l != "no_failure"}) for v, (rows, _) in by_variant.items()}
     new_in_fixed = sorted(set(labels.get("fixed", [])) - set(labels.get("flawed", [])))

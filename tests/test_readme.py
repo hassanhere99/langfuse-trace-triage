@@ -45,3 +45,19 @@ def test_readme_names_all_four_variants_and_the_untouched_control():
     for v in ("`flawed`", "`fixed`", "`desc_only`", "`errors_only`"):
         assert v in README
     assert "left alone in every variant" in README
+
+
+def test_readme_determinism_and_location_numbers_match_the_data():
+    import json
+    import aggregate as ag
+    import score_new_reports as sn
+    import score_reports as sr
+    runs = json.loads((ROOT / "experiments" / "runs" / "index.json").read_text())["runs"]
+    baseline = ag.committed_baseline()
+    cells, identical, _, _ = ag.determinism(runs, baseline)
+    assert f"{len(identical)} of {len(cells)} cells gave 3 identical runs" in README
+    gt = sr.load_ground_truth(ROOT / "experiments" / "ground_truth.yaml")
+    rows = sn.score_variant("flawed", [r for r in runs if r["variant"] == "flawed"], ROOT / "experiments" / "reports" / "flawed", gt)
+    t = sr.totals(rows)
+    assert f"right for {t['location_failed'][0]} of {t['location_failed'][1]}" in README
+    assert f"named somewhere in the report for {t['location_failed_any'][0]} of {t['location_failed_any'][1]}" in README

@@ -1,7 +1,8 @@
 """Run the before/after experiment: scenarios x variants x runs against the local model, one trace each.
 
-    python experiments/run_experiment.py --plan main      # 72 runs, temperature 0   -> experiments/runs/
+    python experiments/run_experiment.py --plan main      # 78 runs, temperature 0   -> experiments/runs/
     python experiments/run_experiment.py --plan t07       # 30 runs, temperature 0.7 -> experiments/runs_t07/
+    python experiments/run_experiment.py --plan recheck   # 6 runs, Ollama version control -> experiments/runs_recheck/
     python experiments/run_experiment.py --plan main --phase export    # only (re)export the traces
 
 Phases: "run" talks to the model and Langfuse and appends one line per run to <out>/raw_runs.jsonl;
@@ -43,8 +44,17 @@ THREE = ["cancel_bare_number", "cancel_shipped_order", "return_processing_order"
 PLANS = {
     "main": {
         "out": ROOT / "experiments" / "runs", "temperature": 0, "runs": 3,
+        # undo_delivered_order was added for desc_only and errors_only after the first 72 runs, to find out which
+        # fix caused its regression under fixed. The runner skips runs already recorded, so only those 6 are new.
         "variants": {"flawed": SCENARIO_ORDER, "fixed": SCENARIO_ORDER,
-                     "desc_only": POST_ERROR_AND_FORMAT, "errors_only": POST_ERROR_AND_FORMAT},
+                     "desc_only": POST_ERROR_AND_FORMAT + ["undo_delivered_order"],
+                     "errors_only": POST_ERROR_AND_FORMAT + ["undo_delivered_order"]},
+    },
+    # Control added with the undo_delivered_order extension: Ollama was updated from 0.40.17 to 0.40.18 between the
+    # main batch and the extension, so flawed and fixed on that scenario are re-run to see whether outputs moved.
+    "recheck": {
+        "out": ROOT / "experiments" / "runs_recheck", "temperature": 0, "runs": 3,
+        "variants": {"flawed": ["undo_delivered_order"], "fixed": ["undo_delivered_order"]},
     },
     "t07": {
         "out": ROOT / "experiments" / "runs_t07", "temperature": 0.7, "runs": 5,
@@ -233,6 +243,7 @@ def do_export(plan_name, plan, attempts=12, delay=5.0):
         path = out / r["variant"] / r["scenario"] / f"run_{r['run']}.json"
         entry = {k: r[k] for k in ("variant", "scenario", "run", "trace_id", "elapsed_s", "failure", "flaw_triggered",
                                    "note", "tools", "tool_errors", "final_text", "misleading_not_found")}
+        entry["first_tool"] = r["tools"][0] if r["tools"] else None
         entry["failure_response_rule"] = fc.check(r["scenario"], r["tool_calls"], r["final_text"], return_rule="response")["failure"]
         entry["file"] = str(path.relative_to(ROOT))
         if not path.exists():

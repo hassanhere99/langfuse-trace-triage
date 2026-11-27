@@ -72,12 +72,12 @@ def build_summary():
     add("Setup", "Ollama version", s["ollama_version"], src)
     add("Setup", "Runs per scenario and variant", s["runs_per_cell"], src)
     runs = main["runs"]
-    add("Setup", "Traces in the main batch", len(runs), "experiments/runs/index.json")
+    add("Setup", "Traces in the main batch (72 first, then 6 undo_delivered_order runs for desc_only and errors_only)", len(runs), "experiments/runs/index.json")
     t07 = json.loads((ROOT / "experiments/runs_t07/index.json").read_text())
     add("Setup", "Traces in the temperature 0.7 batch", len(t07["runs"]), "experiments/runs_t07/index.json")
     add("Setup", "Temperature, second batch", t07["settings"]["temperature"], "experiments/runs_t07/settings.json")
     secs = [r["elapsed_s"] for r in runs]
-    add("Setup", "Model time for the 72 main runs (s)", f"{sum(secs):.0f}", "experiments/runs/index.json")
+    add("Setup", "Model time for the 78 main runs (s)", f"{sum(secs):.0f}", "experiments/runs/index.json")
     add("Setup", "Slowest single run (s)", f"{max(secs):.1f}", "experiments/runs/index.json")
 
     # --- committed reports scored against ground truth
@@ -141,8 +141,29 @@ def build_summary():
             add(sec, "Traces triaged", tv["n"], "experiments/results_after.md")
             add(sec, "Label accuracy", frac(tv["label"], tv["n"]), "experiments/results_after.md")
             add(sec, "Fix-location accuracy", frac(tv["location"], tv["n"]), "experiments/results_after.md")
+            add(sec, "Fix-location accuracy on traces that failed, primary location", frac(*tv["location_failed"]), "experiments/results_after.md")
+            add(sec, "Fix-location accuracy on traces that failed, right location named anywhere", frac(*tv["location_failed_any"]), "experiments/results_after.md")
             add(sec, "False positives on expected-clean traces", frac(*tv["false_pos"]), "experiments/results_after.md")
             add(sec, "System-prompt edit suggested, any report", f"{tv['sys_prompt_any']} of {tv['n']}", "experiments/results_after.md")
+
+    # --- fix location by scenario on failed flawed traces
+    flawed_rows = sn.score_variant("flawed", [r for r in runs if r["variant"] == "flawed"], ROOT / "experiments/reports/flawed", gts)
+    for scenario, n, prim, anyl in sn.location_by_scenario(flawed_rows):
+        sec = "Fix location on failed flawed traces, by scenario"
+        add(sec, f"{scenario}: primary location right (of {n} failed traces)", frac(prim, n), "experiments/results_after.md")
+        add(sec, f"{scenario}: right location named anywhere (of {n} failed traces)", frac(anyl, n), "experiments/results_after.md")
+
+    # --- undo_delivered_order attribution and the Ollama control
+    for v in ("flawed", "desc_only", "errors_only", "fixed"):
+        rs = ag.cell(runs, v, "undo_delivered_order")
+        add("undo_delivered_order by variant (temperature 0, 3 runs each)", f"{v}: failures", ag.fraction(rs, "failure"), "experiments/runs/index.json")
+        add("undo_delivered_order by variant (temperature 0, 3 runs each)", f"{v}: first tool call", ag.first_tools(rs).replace("`", ""), "experiments/runs/index.json")
+    rc = json.loads((ROOT / "experiments/runs_recheck/index.json").read_text())["runs"]
+    for v in ("flawed", "fixed"):
+        add("Ollama update control (undo_delivered_order, 3 runs each)", f"{v}: failures after the update", ag.fraction(ag.cell(rc, v, "undo_delivered_order"), "failure"), "experiments/runs_recheck/index.json")
+    add("Ollama update control (undo_delivered_order, 3 runs each)", "Ollama version of the first 72 runs", s["ollama_version"], "experiments/runs/settings.json")
+    add("Ollama update control (undo_delivered_order, 3 runs each)", "Ollama version of the 6 extension runs", s["extension"]["ollama_version"], "experiments/runs/settings.json")
+    add("Ollama update control (undo_delivered_order, 3 runs each)", "Ollama version of the control runs", json.loads((ROOT / "experiments/runs_recheck/settings.json").read_text())["ollama_version"], "experiments/runs_recheck/settings.json")
 
     # --- error messages
     rows_e = error_changes.error_changes()
