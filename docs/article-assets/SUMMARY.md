@@ -21,10 +21,10 @@ Every number the article could quote, with the file it comes from. `python exper
 | max_tokens | 4096 | `experiments/runs/settings.json` |
 | Ollama version | 0.40.17 | `experiments/runs/settings.json` |
 | Runs per scenario and variant | 3 | `experiments/runs/settings.json` |
-| Traces in the main batch | 72 | `experiments/runs/index.json` |
+| Traces in the main batch (72 first, then 6 undo_delivered_order runs for desc_only and errors_only) | 78 | `experiments/runs/index.json` |
 | Traces in the temperature 0.7 batch | 30 | `experiments/runs_t07/index.json` |
 | Temperature, second batch | 0.7 | `experiments/runs_t07/settings.json` |
-| Model time for the 72 main runs (s) | 1113 | `experiments/runs/index.json` |
+| Model time for the 78 main runs (s) | 1222 | `experiments/runs/index.json` |
 | Slowest single run (s) | 30.6 | `experiments/runs/index.json` |
 
 ## Committed reports (before)
@@ -55,6 +55,8 @@ Every number the article could quote, with the file it comes from. `python exper
 | undo_delivered_order, committed run (1 run) | 0/1 | `examples/traces/undo_delivered_order.json` |
 | undo_delivered_order, flawed | 0/3 | `experiments/runs/index.json` |
 | undo_delivered_order, fixed | 3/3 | `experiments/runs/index.json` |
+| undo_delivered_order, desc_only | 3/3 | `experiments/runs/index.json` |
+| undo_delivered_order, errors_only | 0/3 | `experiments/runs/index.json` |
 | cancel_bare_number, committed run (1 run) | 1/1 | `examples/traces/cancel_bare_number.json` |
 | cancel_bare_number, flawed | 3/3 | `experiments/runs/index.json` |
 | cancel_bare_number, fixed | 0/3 | `experiments/runs/index.json` |
@@ -106,7 +108,7 @@ Every number the article could quote, with the file it comes from. `python exper
 
 | Claim | Value | Source |
 |---|---|---|
-| Cells with 3 identical runs | 21/24 | `experiments/runs/index.json` |
+| Cells with 3 identical runs | 22/26 | `experiments/runs/index.json` |
 | Scenarios where the first flawed run matches the committed run exactly | 7/8 | `experiments/runs/index.json` |
 
 ## Failures out of 5 runs (temperature 0.7)
@@ -135,6 +137,8 @@ Every number the article could quote, with the file it comes from. `python exper
 | Traces triaged | 16 | `experiments/results_after.md` |
 | Label accuracy | 10/16 | `experiments/results_after.md` |
 | Fix-location accuracy | 7/16 | `experiments/results_after.md` |
+| Fix-location accuracy on traces that failed, primary location | 4/12 | `experiments/results_after.md` |
+| Fix-location accuracy on traces that failed, right location named anywhere | 7/12 | `experiments/results_after.md` |
 | False positives on expected-clean traces | 2/4 | `experiments/results_after.md` |
 | System-prompt edit suggested, any report | 0 of 16 | `experiments/results_after.md` |
 
@@ -145,6 +149,8 @@ Every number the article could quote, with the file it comes from. `python exper
 | Traces triaged | 16 | `experiments/results_after.md` |
 | Label accuracy | 11/16 | `experiments/results_after.md` |
 | Fix-location accuracy | 7/16 | `experiments/results_after.md` |
+| Fix-location accuracy on traces that failed, primary location | 4/12 | `experiments/results_after.md` |
+| Fix-location accuracy on traces that failed, right location named anywhere | 7/12 | `experiments/results_after.md` |
 | False positives on expected-clean traces | 1/4 | `experiments/results_after.md` |
 | System-prompt edit suggested, any report | 0 of 16 | `experiments/results_after.md` |
 
@@ -155,6 +161,8 @@ Every number the article could quote, with the file it comes from. `python exper
 | Traces triaged | 16 | `experiments/results_after.md` |
 | Label accuracy | 10/16 | `experiments/results_after.md` |
 | Fix-location accuracy | 15/16 | `experiments/results_after.md` |
+| Fix-location accuracy on traces that failed, primary location | 9/9 | `experiments/results_after.md` |
+| Fix-location accuracy on traces that failed, right location named anywhere | 9/9 | `experiments/results_after.md` |
 | False positives on expected-clean traces | 3/7 | `experiments/results_after.md` |
 | System-prompt edit suggested, any report | 0 of 16 | `experiments/results_after.md` |
 
@@ -165,8 +173,46 @@ Every number the article could quote, with the file it comes from. `python exper
 | Traces triaged | 16 | `experiments/results_after.md` |
 | Label accuracy | 11/16 | `experiments/results_after.md` |
 | Fix-location accuracy | 15/16 | `experiments/results_after.md` |
+| Fix-location accuracy on traces that failed, primary location | 9/9 | `experiments/results_after.md` |
+| Fix-location accuracy on traces that failed, right location named anywhere | 9/9 | `experiments/results_after.md` |
 | False positives on expected-clean traces | 2/7 | `experiments/results_after.md` |
 | System-prompt edit suggested, any report | 0 of 16 | `experiments/results_after.md` |
+
+## Fix location on failed flawed traces, by scenario
+
+| Claim | Value | Source |
+|---|---|---|
+| cancel_bare_number: primary location right (of 3 failed traces) | 0/3 | `experiments/results_after.md` |
+| cancel_bare_number: right location named anywhere (of 3 failed traces) | 3/3 | `experiments/results_after.md` |
+| cancel_shipped_order: primary location right (of 3 failed traces) | 0/3 | `experiments/results_after.md` |
+| cancel_shipped_order: right location named anywhere (of 3 failed traces) | 0/3 | `experiments/results_after.md` |
+| return_processing_order: primary location right (of 3 failed traces) | 1/3 | `experiments/results_after.md` |
+| return_processing_order: right location named anywhere (of 3 failed traces) | 1/3 | `experiments/results_after.md` |
+| unneeded_lookup: primary location right (of 3 failed traces) | 3/3 | `experiments/results_after.md` |
+| unneeded_lookup: right location named anywhere (of 3 failed traces) | 3/3 | `experiments/results_after.md` |
+
+## undo_delivered_order by variant (temperature 0, 3 runs each)
+
+| Claim | Value | Source |
+|---|---|---|
+| flawed: failures | 0/3 | `experiments/runs/index.json` |
+| flawed: first tool call | start_return x3 | `experiments/runs/index.json` |
+| desc_only: failures | 3/3 | `experiments/runs/index.json` |
+| desc_only: first tool call | cancel_order x3 | `experiments/runs/index.json` |
+| errors_only: failures | 0/3 | `experiments/runs/index.json` |
+| errors_only: first tool call | start_return x3 | `experiments/runs/index.json` |
+| fixed: failures | 3/3 | `experiments/runs/index.json` |
+| fixed: first tool call | cancel_order x3 | `experiments/runs/index.json` |
+
+## Ollama update control (undo_delivered_order, 3 runs each)
+
+| Claim | Value | Source |
+|---|---|---|
+| flawed: failures after the update | 0/3 | `experiments/runs_recheck/index.json` |
+| fixed: failures after the update | 3/3 | `experiments/runs_recheck/index.json` |
+| Ollama version of the first 72 runs | 0.40.17 | `experiments/runs/settings.json` |
+| Ollama version of the 6 extension runs | 0.40.18 | `experiments/runs/settings.json` |
+| Ollama version of the control runs | 0.40.18 | `experiments/runs_recheck/settings.json` |
 
 ## Error messages the fix changes
 
@@ -180,7 +226,7 @@ Every number the article could quote, with the file it comes from. `python exper
 
 | Claim | Value | Source |
 |---|---|---|
-| Tests collected by pytest | 178 | `tests/` |
+| Tests collected by pytest | 188 | `tests/` |
 
 ## Files in this folder
 
