@@ -1,0 +1,27 @@
+- description: "60bb743b15dd311dc0069e49c2456208: stock and price answer uses the search_books result"
+  vars:
+    messages:
+      - role: system
+        content: "You are a customer support assistant for an online bookstore. Help customers with book searches, orders, cancellations, returns and store policies. Be concise and polite."
+      - role: user
+        content: "Do you have The Left Hand of Darkness in stock, and how much is it?"
+      - role: assistant
+        content: ""
+        tool_calls:
+          - id: call_l8zh6t9j
+            type: function
+            function:
+              name: search_books
+              arguments: '{"query":"The Left Hand of Darkness"}'
+      - role: tool
+        tool_call_id: call_l8zh6t9j
+        content: '{"query": "The Left Hand of Darkness", "results": [{"isbn": "9780441478125", "title": "The Left Hand of Darkness", "author": "Ursula K. Le Guin", "price": 11.99, "stock": 14}], "count": 1}'
+  assert:
+    - type: javascript
+      value: |
+        const msg = typeof output === 'string' ? { content: output, tool_calls: [] }
+          : Array.isArray(output) ? { content: '', tool_calls: output } : output;
+        const text = msg.content || '';
+        const noCalls = (msg.tool_calls || []).length === 0;
+        const ok = noCalls && /11\.99/.test(text) && /\b14\b/.test(text);
+        return { pass: ok, score: ok ? 1 : 0, reason: text.slice(0, 300) };

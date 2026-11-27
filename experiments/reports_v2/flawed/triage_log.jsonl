@@ -1,0 +1,16 @@
+{"trace_id": "60bb743b15dd311dc0069e49c2456208", "ok": true, "elapsed_s": 35.3, "mentions_permission_denial": true, "scenario": "search_by_title", "run": 1, "why": "clean check"}
+{"trace_id": "c137dfb1aaaba2ef59ebf92c3e682b95", "ok": true, "elapsed_s": 32.4, "mentions_permission_denial": false, "scenario": "shipping_policy", "run": 1, "why": "clean check"}
+{"trace_id": "5abcaa27b52a372780e0cf5415850516", "ok": true, "elapsed_s": 56.0, "mentions_permission_denial": true, "scenario": "undo_delivered_order", "run": 1, "why": "clean check"}
+{"trace_id": "21e9b07f342184b1af1dd9d53245738a", "ok": true, "elapsed_s": 61.7, "mentions_permission_denial": true, "scenario": "cancel_bare_number", "run": 1, "why": "troubled"}
+{"trace_id": "4a74af8ed648d5c6c89350dc30b638c8", "ok": true, "elapsed_s": 52.3, "mentions_permission_denial": true, "scenario": "cancel_bare_number", "run": 2, "why": "troubled"}
+{"trace_id": "dfd5ee0bc53db932f176cc788fc3b995", "ok": true, "elapsed_s": 52.9, "mentions_permission_denial": true, "scenario": "cancel_bare_number", "run": 3, "why": "troubled"}
+{"trace_id": "23f728a956dd829378b08397aef3082e", "ok": true, "elapsed_s": 35.8, "mentions_permission_denial": false, "scenario": "return_window_from_memory", "run": 1, "why": "clean check"}
+{"trace_id": "b98224e2967d612584ce33c644742aab", "ok": true, "elapsed_s": 32.0, "mentions_permission_denial": false, "scenario": "cancel_shipped_order", "run": 1, "why": "troubled"}
+{"trace_id": "ec401ce244f6db6cd4e2fc67cfac470a", "ok": true, "elapsed_s": 42.3, "mentions_permission_denial": true, "scenario": "cancel_shipped_order", "run": 2, "why": "troubled"}
+{"trace_id": "62a0e5536e0bbe53c73ed0649e9530c4", "ok": true, "elapsed_s": 21.8, "mentions_permission_denial": false, "scenario": "cancel_shipped_order", "run": 3, "why": "troubled"}
+{"trace_id": "848e27d549149fae3c21be36cacdc8d4", "ok": true, "elapsed_s": 56.2, "mentions_permission_denial": false, "scenario": "return_processing_order", "run": 1, "why": "troubled"}
+{"trace_id": "4a2292322e2aee6a62e923d2e9b939ed", "ok": true, "elapsed_s": 25.6, "mentions_permission_denial": false, "scenario": "return_processing_order", "run": 2, "why": "troubled"}
+{"trace_id": "e22d74dc8e7c4dc627a0f0473a1fcce5", "ok": true, "elapsed_s": 64.5, "mentions_permission_denial": true, "scenario": "return_processing_order", "run": 3, "why": "troubled"}
+{"trace_id": "8f86307044b926816eb7783c0ca55b69", "ok": true, "elapsed_s": 36.7, "mentions_permission_denial": true, "scenario": "unneeded_lookup", "run": 1, "why": "troubled"}
+{"trace_id": "655165e90a93b2195971798c7db6a5c8", "ok": true, "elapsed_s": 47.0, "mentions_permission_denial": true, "scenario": "unneeded_lookup", "run": 2, "why": "troubled"}
+{"trace_id": "99d6a26efd0e8374114f7714f6833c6f", "ok": true, "elapsed_s": 44.6, "mentions_permission_denial": true, "scenario": "unneeded_lookup", "run": 3, "why": "troubled"}
