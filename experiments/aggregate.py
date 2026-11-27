@@ -230,6 +230,178 @@ def triage_section(index_runs, ground_truth):
     return by_variant
 
 
+# ---- skill v1 vs v2 on the same traces --------------------------------------------------------------------------
+
+import re  # noqa: E402
+
+REPORTS_V1 = ROOT / "experiments" / "reports"
+REPORTS_V2 = ROOT / "experiments" / "reports_v2"
+_NAMES_DATA_RE = re.compile(r"data (that )?would settle|data needed|would settle (it|this)|to settle (it|this)", re.I)
+_VERDICT_RE = re.compile(r"^-\s*Verdict:\s*no_failure", re.M | re.I)
+
+
+def report_path(rdir, trace_id):
+    return Path(rdir) / f"{trace_id}.md"
+
+
+def inconclusive_stats(rows, rdir):
+    """How reports use `inconclusive`, from the report files behind scored rows.
+
+    misuse: an `inconclusive` finding in a report whose Summary says "No failure found" (the v1 pattern).
+    on_clean: an `inconclusive` primary label on an expected-clean trace.
+    no_data: an `inconclusive` report that does not say what data would settle it.
+    explicit_no_failure: reports with a "Verdict: no_failure" line (the v2 format)."""
+    out = {"reports": len(rows), "inconclusive_primary": 0, "misuse": 0, "on_clean": 0, "no_data": 0, "explicit_no_failure": 0}
+    for r in rows:
+        text = report_path(rdir, r["trace_id"]).read_text()
+        parsed = sr.parse_report(text)
+        if _VERDICT_RE.search(text):
+            out["explicit_no_failure"] += 1
+        if parsed["labels"][0] == "inconclusive":
+            out["inconclusive_primary"] += 1
+            out["misuse"] += int(parsed["summary_no_failure"])
+            out["on_clean"] += int(r["clean"])
+            out["no_data"] += int(not _NAMES_DATA_RE.search(text))
+    return out
+
+
+def verdict_changes(rows_v1, rows_v2):
+    """Traces where the primary label or the primary fix location differs between v1 and v2 (same trace id)."""
+    v2 = {r["trace_id"]: r for r in rows_v2}
+    changed, secondary_only, same = [], 0, 0
+    for a in rows_v1:
+        b = v2.get(a["trace_id"])
+        if b is None:
+            continue
+        primary_changed = a["labels"][0] != b["labels"][0] or a["locations"][0] != b["locations"][0]
+        if primary_changed:
+            changed.append((a, b))
+        elif a["labels"] != b["labels"] or a["locations"] != b["locations"]:
+            secondary_only += 1
+        else:
+            same += 1
+    return changed, secondary_only, same
+
+
+def v1_v2_section(index_runs, ground_truth):
+    out = []
+    data = {}
+    for variant in ("flawed", "fixed"):
+        runs = [r for r in index_runs if r["variant"] == variant]
+        r1 = sn.score_variant(variant, runs, REPORTS_V1 / variant, ground_truth)
+        r2 = sn.score_variant(variant, runs, REPORTS_V2 / variant, ground_truth)
+        data[variant] = (runs, r1, r2)
+    if not data["flawed"][2] and not data["fixed"][2]:
+        return out
+    out.append("## Skill v1 vs v2 on the same traces\n")
+    out.append(
+        "**v1** is the skill with the trace-only rule, as used for `experiments/reports/` (everything above). **v2** adds the root-cause tie-break "
+        "rule, the explicit `fix_location` field (commit `594d363`) and the `no_failure` / `inconclusive` fix. The 32 traces (16 `flawed`, 16 `fixed`), "
+        "the blinding, the model, the allowed tools (no promptfoo in either) and the scorer are the same; v2 reports are in `experiments/reports_v2/`. "
+        "Expected labels, the ground truth and the failure checks were not changed after seeing v2 output. No v1 number above was changed.\n")
+    out.append("**One triage per trace, so differences on a single trace may be noise.** The same skill run twice on the same trace can give a different "
+               "verdict (the model is not deterministic here). Read the totals as rough, and the per-trace list below as a list of changes, not of improvements.\n")
+
+    # --- failed flawed traces, per scenario, v1 vs v2
+    _, f1, f2 = data["flawed"]
+    out.append("### Traces that actually failed, per scenario (`flawed`; expected-clean traces excluded)\n")
+    out.append("| Scenario | Failed traces | Failure type right (primary), v1 → v2 | Fix location right (primary), v1 → v2 | Fix location named anywhere, v1 → v2 |")
+    out.append("|---|---|---|---|---|")
+    tot = [0, 0, 0, 0, 0, 0, 0]
+    for scenario in dict.fromkeys(r["scenario"] for r in f1):
+        a = [r for r in f1 if r["scenario"] == scenario and not r["clean"]]
+        b = [r for r in f2 if r["scenario"] == scenario and not r["clean"]]
+        if not a:
+            continue
+        cells = [(sum(r["label_ok"] for r in a), sum(r["label_ok"] for r in b)),
+                 (sum(r["location_ok"] for r in a), sum(r["location_ok"] for r in b)),
+                 (sum(r["location_any"] for r in a), sum(r["location_any"] for r in b))]
+        out.append(f"| {scenario} | {len(a)} | {cells[0][0]}/{len(a)} → {cells[0][1]}/{len(b)} | {cells[1][0]}/{len(a)} → {cells[1][1]}/{len(b)} | {cells[2][0]}/{len(a)} → {cells[2][1]}/{len(b)} |")
+        tot[0] += len(a)
+        tot[1] += cells[0][0]; tot[2] += cells[0][1]; tot[3] += cells[1][0]; tot[4] += cells[1][1]; tot[5] += cells[2][0]; tot[6] += cells[2][1]
+    n = tot[0]
+    out.append(f"| **All failed `flawed` traces** | **{n}** | **{tot[1]}/{n} → {tot[2]}/{n}** | **{tot[3]}/{n} → {tot[4]}/{n}** | **{tot[5]}/{n} → {tot[6]}/{n}** |")
+    out.append("")
+
+    # --- totals, both variants
+    out.append("### Totals, v1 vs v2 (as written)\n")
+    out.append("| Measure | flawed v1 | flawed v2 | fixed v1 | fixed v2 |")
+    out.append("|---|---|---|---|---|")
+
+    def tcells(fn):
+        return [fn(sr.totals(data[v][i]), data[v][i]) for v in ("flawed", "fixed") for i in (1, 2)]
+
+    def line(name, fn):
+        out.append(f"| {name} | " + " | ".join(tcells(fn)) + " |")
+
+    line("Traces triaged", lambda t, rows: str(t["n"]))
+    line("Failure type right (primary), all traces", lambda t, rows: f"{t['label']}/{t['n']}")
+    line("Fully correct (label right, every quote found)", lambda t, rows: f"{t['fully_correct']}/{t['n']}")
+    line("Failed traces: failure type right (primary)", lambda t, rows: f"{sum(r['label_ok'] for r in rows if not r['clean'])}/{t['location_failed'][1]}")
+    line("Failed traces: fix location right (primary)", lambda t, rows: f"{t['location_failed'][0]}/{t['location_failed'][1]}")
+    line("Failed traces: fix location named anywhere", lambda t, rows: f"{t['location_failed_any'][0]}/{t['location_failed_any'][1]}")
+    def missed(variant, version):
+        rows = sn.score_variant(variant, data[variant][0], (REPORTS_V1 if version == 1 else REPORTS_V2) / variant, ground_truth, adjusted=True)
+        failed = [r for r in rows if not r["clean"]]
+        return f"{sum(r['labels'] == ['no_failure'] for r in failed)}/{len(failed)}"
+
+    out.append("| Failed traces reported as no failure (v1: a \"No failure found\" summary counts) | " + " | ".join(
+        missed(v, i) for v in ("flawed", "fixed") for i in (1, 2)) + " |")
+    line("False positives on expected-clean traces (a failure reported where the agent behaved correctly)", lambda t, rows: f"{t['false_pos'][0]}/{t['false_pos'][1]}")
+    line("False positives, unambiguous clean traces only", lambda t, rows: f"{sum(r['false_positive'] for r in rows if r['clean'] and not r['ambiguous'])}/{sum(1 for r in rows if r['clean'] and not r['ambiguous'])}")
+    line("System-prompt edit suggested, any report", lambda t, rows: f"{t['sys_prompt_any']} of {t['n']}")
+    out.append("")
+
+    # --- inconclusive misuse
+    out.append("### How reports use `inconclusive`\n")
+    out.append("`misuse` = an `inconclusive` finding in a report whose Summary says \"No failure found\". `on clean` = `inconclusive` as the primary label of an "
+               "expected-clean trace. `no data named` = an `inconclusive` report with no line saying what data would settle it. "
+               "`explicit no_failure` = reports with a \"Verdict: no_failure\" line (the v2 format).\n")
+    out.append("| Count | flawed v1 | flawed v2 | fixed v1 | fixed v2 | both variants v1 | both variants v2 |")
+    out.append("|---|---|---|---|---|---|---|")
+    stats = {(v, i): inconclusive_stats(data[v][i], REPORTS_V1 / v if i == 1 else REPORTS_V2 / v) for v in ("flawed", "fixed") for i in (1, 2)}
+    for key, name in (("reports", "reports"), ("inconclusive_primary", "`inconclusive` as primary label"), ("misuse", "misuse (`inconclusive` under \"No failure found\")"),
+                      ("on_clean", "`inconclusive` on an expected-clean trace"), ("no_data", "`inconclusive` with no data named"), ("explicit_no_failure", "explicit `no_failure` verdict")):
+        v = [stats[(a, i)][key] for a in ("flawed", "fixed") for i in (1, 2)]
+        out.append(f"| {name} | {v[0]} | {v[1]} | {v[2]} | {v[3]} | {v[0] + v[2]} | {v[1] + v[3]} |")
+    out.append("")
+
+    # --- per-trace changes
+    out.append("### Traces where the verdict changed\n")
+    out.append("A verdict counts as changed when the primary finding type or the primary fix location differs between v1 and v2. "
+               "Each row is one trace triaged once by each version; \"better\" and \"worse\" are against the expected label and location "
+               "from `experiments/expected_labels.py`, which were not changed.\n")
+    out.append("| Variant | Scenario | Run | Expected | v1 findings → fix location | v2 findings → fix location | Label | Location |")
+    out.append("|---|---|---|---|---|---|---|---|")
+    n_changed = n_secondary = n_same = 0
+    for variant in ("flawed", "fixed"):
+        _, r1, r2 = data[variant]
+        changed, secondary, same = verdict_changes(r1, r2)
+        n_changed += len(changed); n_secondary += secondary; n_same += same
+        for a, b in changed:
+            fmt = lambda r: ", ".join(f"`{l}`" for l in r["as_written"]) + " → " + ", ".join(f"`{l}`" for l in r["locations"])
+            out.append(f"| {variant} | {a['scenario']}{' †' if a['ambiguous'] else ''} | {a['run']} | `{a['expected']}` / `{a['expected_location']}` | {fmt(a)} | {fmt(b)} | "
+                       f"{'same' if a['label_ok'] == b['label_ok'] else ('better' if b['label_ok'] else 'worse')} | "
+                       f"{'same' if a['location_ok'] == b['location_ok'] else ('better' if b['location_ok'] else 'worse')} |")
+    out.append("")
+    lab = {"better": 0, "worse": 0, "same": 0}
+    loc = {"better": 0, "worse": 0, "same": 0}
+    for variant in ("flawed", "fixed"):
+        _, r1, r2 = data[variant]
+        by2 = {r["trace_id"]: r for r in r2}
+        for a in r1:
+            b = by2.get(a["trace_id"])
+            if b is None:
+                continue
+            lab["same" if a["label_ok"] == b["label_ok"] else ("better" if b["label_ok"] else "worse")] += 1
+            loc["same" if a["location_ok"] == b["location_ok"] else ("better" if b["location_ok"] else "worse")] += 1
+    out.append(f"Against the expected labels, across all 32 traces: primary finding type {lab['better']} better, {lab['worse']} worse, {lab['same']} unchanged in correctness; "
+               f"primary fix location {loc['better']} better, {loc['worse']} worse, {loc['same']} unchanged in correctness.\n")
+    out.append(f"{n_changed} of {n_changed + n_secondary + n_same} traces changed primary verdict or primary fix location; {n_secondary} differ only in "
+               f"secondary findings or in the order of locations after the first; {n_same} have the same findings and locations. † = ambiguous expected label.\n")
+    return out
+
+
 def build(notes_path=ROOT / "experiments" / "results_after_notes.md"):
     main = load_index(ROOT / "experiments" / "runs" / "index.json")
     if main is None:
@@ -313,6 +485,7 @@ def build(notes_path=ROOT / "experiments" / "results_after_notes.md"):
     out.append(f"Failure types reported on `flawed` traces: {', '.join(f'`{l}`' for l in labels.get('flawed', [])) or 'none'}. "
                f"On `fixed` traces: {', '.join(f'`{l}`' for l in labels.get('fixed', [])) or 'none'}. "
                f"Types that appear only on `fixed` traces: {', '.join(f'`{l}`' for l in new_in_fixed) or 'none'}.\n")
+    out.extend(v1_v2_section(runs, gt))
     t07 = load_index(ROOT / "experiments" / "runs_t07" / "index.json")
     if t07:
         out.append("## Temperature 0.7\n")

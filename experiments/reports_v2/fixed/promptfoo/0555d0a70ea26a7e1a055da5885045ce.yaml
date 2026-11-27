@@ -1,0 +1,21 @@
+- description: "0555d0a70ea26a7e1a055da5885045ce: return-window question should call get_store_policy(returns)"
+  vars:
+    messages:
+      - role: system
+        content: "You are a customer support assistant for an online bookstore. Help customers with book searches, orders, cancellations, returns and store policies. Be concise and polite."
+      - role: user
+        content: "How many days do I have to return a book?"
+  assert:
+    - type: javascript
+      value: |
+        const msg = typeof output === 'string' ? { content: output, tool_calls: [] }
+          : Array.isArray(output) ? { content: '', tool_calls: output } : output;
+        const calls = (msg.tool_calls || []).map((tc) => {
+          let input = {};
+          try { input = JSON.parse(tc.function.arguments || '{}'); } catch (e) { input = { _unparsed: tc.function.arguments }; }
+          return { name: tc.function.name, input };
+        });
+        const call = calls[0];
+        if (!call) return { pass: false, score: 0, reason: 'no tool call in output' };
+        const ok = call.name === 'get_store_policy' && call.input.topic === 'returns';
+        return { pass: ok, score: ok ? 1 : 0, reason: JSON.stringify(call) };

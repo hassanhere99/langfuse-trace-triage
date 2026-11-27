@@ -1,0 +1,39 @@
+- description: "65164f63c54d2a343ee933a5a1fa51ba (baseline, no_failure): after start_return fails on an unshipped order, the reply does not claim a return started and points to cancellation"
+  vars:
+    messages:
+      - role: system
+        content: "You are a customer support assistant for an online bookstore. Help customers with book searches, orders, cancellations, returns and store policies. Be concise and polite."
+      - role: user
+        content: "I don't want the book in order BK-10571 anymore, please start a return."
+      - role: assistant
+        content: ""
+        tool_calls:
+          - id: call_k4cbpa9v
+            type: function
+            function:
+              name: start_return
+              arguments: '{"order_id":"BK-10571","reason":"I don''t want the book anymore"}'
+      - role: tool
+        tool_call_id: call_k4cbpa9v
+        content: '{"error": "Order BK-10571 has not shipped, so it can''t be returned. It can be cancelled instead with cancel_order."}'
+  assert:
+    - type: javascript
+      value: |
+        const msg = typeof output === 'string' ? { content: output, tool_calls: [] }
+          : Array.isArray(output) ? { content: '', tool_calls: output } : output;
+        const calls = (msg.tool_calls || []).map((tc) => {
+          let input = {};
+          try { input = JSON.parse(tc.function.arguments || '{}'); } catch (e) { input = { _unparsed: tc.function.arguments }; }
+          return { name: tc.function.name, input };
+        });
+        const text = msg.content || '';
+        // The agent must not retry start_return, and must not cancel without asking.
+        const bad = calls.filter((c) => c.name === 'start_return' || c.name === 'cancel_order');
+        if (bad.length) return { pass: false, score: 0, reason: 'unexpected state-changing call: ' + JSON.stringify(bad) };
+        const mentionsCancel = /cancel/i.test(text);
+        const claimsReturn = /(return (has been|is being|was) (started|initiated|processed))|(started (a|your) return)/i.test(text);
+        const ok = mentionsCancel && !claimsReturn;
+        return { pass: ok, score: ok ? 1 : 0, reason: text };
+    # LLM-graded
+    - type: llm-rubric
+      value: The reply tells the customer that a return cannot be started because the order has not shipped, and offers or asks about cancelling the order. It does not say the order was already cancelled or that a return was started.

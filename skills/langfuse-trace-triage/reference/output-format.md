@@ -46,11 +46,46 @@ Why here: <one sentence applying the fix-location principle>
 ```
 ````
 
+### Report when nothing is wrong
+
+A run with no failure gets the verdict `no_failure`. It has no Findings section (no `### 1.` heading, and no finding of type `inconclusive`), and its `fix_location` is `none`:
+
+````markdown
+# Trace <trace_id>
+
+- Timestamp: <trace timestamp>
+- User feedback and scores: <score name, value, comment; or "none">
+- Summary: No failure found. <one line: what the agent did and why it was right>
+- Verdict: no_failure
+
+## Suggested fix
+
+fix_location: none
+
+None. <one line saying what was checked, for example that every figure in the answer comes from a tool result>
+````
+
+You may add a short "Checks" or "Notes" section after it (not headed `## Findings`), and a baseline promptfoo test that passes on the recorded run. Anything odd you saw but could not settle, such as a possible problem in an offer the agent made, is a note, or an `inconclusive` report if it needs its own finding.
+
+### Report when the trace cannot settle a suspected failure
+
+Use an `inconclusive` finding only when something looks wrong and the trace cannot show why or whether. Say what looks wrong, and name the data that would settle it:
+
+````markdown
+### 1. inconclusive (confidence: low | medium)
+
+Suspected: <what looks wrong, quoted from the trace>
+
+Data that would settle it: <the tool list, the system prompt, the next turn, what the user expected, ...>
+````
+
+Its `fix_location` is `none`, and it has no diff and no promptfoo test case. `inconclusive` is never a way to say that a run is correct.
+
 Notes:
 
-- `fix_location` is required in every report and uses only these values: `tool_description` (a tool's description text), `tool_schema` (a parameter's description, enum, pattern or example), `error_message` (the text a tool returns on failure, or other server behaviour), `system_prompt`, or `none` (no failure, or `inconclusive`). The free-text `Location:` line after it says which tool and why.
+- `fix_location` is required in every report and uses only these values: `tool_description` (a tool's description text), `tool_schema` (a parameter's description, enum, pattern or example), `error_message` (the text a tool returns on failure, or other server behaviour), `system_prompt`, or `none` (verdict `no_failure`, or an `inconclusive` finding). The free-text `Location:` line after it says which tool and why.
 - Scores that come from a script (an automated check) are not user feedback. Label them by what they are.
-- If the result is `inconclusive`, omit the diff and the test case, and list the data needed instead.
+- If the result is `inconclusive`, omit the diff and the test case, and name the data that would settle it. If the result is `no_failure`, there is no Findings section.
 - Keep diffs minimal. Show only the lines that change, with enough context to find them.
 
 ## promptfoo test case

@@ -1,0 +1,31 @@
+- description: "4a74af8ed648d5c6c89350dc30b638c8: invalid order_id error should not be reported as 'order not found'"
+  vars:
+    messages:
+      - role: system
+        content: "You are a customer support assistant for an online bookstore. Help customers with book searches, orders, cancellations, returns and store policies. Be concise and polite."
+      - role: user
+        content: "Please cancel order 10571."
+      - role: assistant
+        content: ""
+        tool_calls:
+          - id: call_zkws6jrs
+            type: function
+            function:
+              name: cancel_order
+              arguments: '{"order_id":"10571"}'
+      - role: tool
+        tool_call_id: call_zkws6jrs
+        content: '{"error": "Invalid order_id: \"10571\""}'
+  assert:
+    - type: javascript
+      value: |
+        const msg = typeof output === 'string' ? { content: output, tool_calls: [] }
+          : Array.isArray(output) ? { content: '', tool_calls: output } : output;
+        const text = msg.content || '';
+        const saysNotFound = /(couldn['’]t|could not|can['’]t|cannot|unable to)\s+(locate|find)|not found|doesn['’]t exist|does not exist/i.test(text);
+        const claimsCancelled = /(has been|was|is now|successfully)\s+cancel/i.test(text);
+        const ok = !saysNotFound && !claimsCancelled;
+        return { pass: ok, score: ok ? 1 : 0, reason: text };
+    # LLM-graded
+    - type: llm-rubric
+      value: The reply tells the customer that the order number was rejected as invalid (or in the wrong format) and asks them to check or re-enter it. It does not say the order could not be found in the system.

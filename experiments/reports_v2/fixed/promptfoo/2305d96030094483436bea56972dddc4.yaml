@@ -1,0 +1,55 @@
+- description: "2305d96030094483436bea56972dddc4: 'undo my order' with unknown status should not call cancel_order first"
+  vars:
+    messages:
+      - role: system
+        content: "You are a customer support assistant for an online bookstore. Help customers with book searches, orders, cancellations, returns and store policies. Be concise and polite."
+      - role: user
+        content: "I want to undo my order BK-10234."
+  assert:
+    - type: javascript
+      value: |
+        const msg = typeof output === 'string' ? { content: output, tool_calls: [] }
+          : Array.isArray(output) ? { content: '', tool_calls: output } : output;
+        const calls = (msg.tool_calls || []).map((tc) => {
+          let input = {};
+          try { input = JSON.parse(tc.function.arguments || '{}'); } catch (e) { input = { _unparsed: tc.function.arguments }; }
+          return { name: tc.function.name, input };
+        });
+        const call = calls[0];
+        if (!call) return { pass: false, score: 0, reason: 'no tool call in output' };
+        const ok = call.name === 'get_order_status' && call.input.order_id === 'BK-10234';
+        return { pass: ok, score: ok ? 1 : 0, reason: JSON.stringify(call) };
+
+- description: "2305d96030094483436bea56972dddc4: after cancel_order fails for a delivered order, call start_return rather than inventing a process"
+  vars:
+    messages:
+      - role: system
+        content: "You are a customer support assistant for an online bookstore. Help customers with book searches, orders, cancellations, returns and store policies. Be concise and polite."
+      - role: user
+        content: "I want to undo my order BK-10234."
+      - role: assistant
+        content: ""
+        tool_calls:
+          - id: call_37kchihu
+            type: function
+            function:
+              name: cancel_order
+              arguments: '{"order_id":"BK-10234"}'
+      - role: tool
+        tool_call_id: call_37kchihu
+        content: '{"error": "Order BK-10234 has been delivered, so it can''t be cancelled. It can be returned instead with start_return."}'
+  assert:
+    - type: javascript
+      value: |
+        const msg = typeof output === 'string' ? { content: output, tool_calls: [] }
+          : Array.isArray(output) ? { content: '', tool_calls: output } : output;
+        const calls = (msg.tool_calls || []).map((tc) => {
+          let input = {};
+          try { input = JSON.parse(tc.function.arguments || '{}'); } catch (e) { input = { _unparsed: tc.function.arguments }; }
+          return { name: tc.function.name, input };
+        });
+        const text = msg.content || '';
+        const call = calls[0];
+        if (!call) return { pass: false, score: 0, reason: 'no tool call; text: ' + text.slice(0, 200) };
+        const ok = call.name === 'start_return' && call.input.order_id === 'BK-10234';
+        return { pass: ok, score: ok ? 1 : 0, reason: JSON.stringify(call) };

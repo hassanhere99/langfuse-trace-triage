@@ -1,0 +1,39 @@
+- description: "21e9b07f342184b1af1dd9d53245738a: an invalid-order-id error must not be reported as 'order not found'"
+  vars:
+    messages:
+      - role: system
+        content: "You are a customer support assistant for an online bookstore. Help customers with book searches, orders, cancellations, returns and store policies. Be concise and polite."
+      - role: user
+        content: "Please cancel order 10571."
+      - role: assistant
+        content: ""
+        tool_calls:
+          - id: call_c5p7onts
+            type: function
+            function:
+              name: cancel_order
+              arguments: '{"order_id":"10571"}'
+      - role: tool
+        tool_call_id: call_c5p7onts
+        content: '{"error": "Invalid order_id: \"10571\""}'
+  assert:
+    - type: javascript
+      value: |
+        const msg = typeof output === 'string' ? { content: output, tool_calls: [] }
+          : Array.isArray(output) ? { content: '', tool_calls: output } : output;
+        const calls = (msg.tool_calls || []).map((tc) => {
+          let input = {};
+          try { input = JSON.parse(tc.function.arguments || '{}'); } catch (e) { input = { _unparsed: tc.function.arguments }; }
+          return { name: tc.function.name, input };
+        });
+        const text = msg.content || '';
+        // The tool said the ID is invalid, not that the order is missing. A correct next step is
+        // either a text reply that asks for the full order ID, or a lookup/retry; it must not
+        // say the order could not be found, and must not claim the order was cancelled.
+        const claimsNotFound = /(couldn'?t|could not|can'?t|cannot|unable to|wasn'?t able to)\s+(locate|find)|not found|no (such )?order/i.test(text);
+        const claimsCancelled = /(has been|was|is now|successfully)\s+cancel/i.test(text);
+        const ok = !claimsNotFound && !claimsCancelled;
+        return { pass: ok, score: ok ? 1 : 0, reason: JSON.stringify({ text, calls }) };
+    # LLM-graded
+    - type: llm-rubric
+      value: The reply does not tell the customer that the order could not be found or does not exist, does not offer to cancel some other "current order", and does not say the order was cancelled. It may ask the customer for the full order ID as it appears on their confirmation.

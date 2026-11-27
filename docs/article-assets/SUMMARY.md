@@ -4,6 +4,7 @@ Every number the article could quote, with the file it comes from. `python exper
 
 ## Read this first
 
+- **Skill v2.** The `no_failure` / `inconclusive` fix is in commit `38ff5ed`. The same 32 traces were re-triaged with it (`experiments/reports_v2/`) and are compared with v1 below; v1 numbers did not change.
 - **The skill change came after the measurements.** The tie-break rule and the explicit `fix_location` field were added in commit `594d363`, after every run, report and score in this experiment. Nothing was re-run with the changed skill.
 - **The committed reports in `examples/reports/` were made by an earlier version of the skill**, before the rule "use only the trace being triaged" (commit `9feb2e8`). The new reports in `experiments/reports/` used the skill with that rule and without the step 6 change.
 - Failure rates come from regular-expression checks on the tool calls and final answers (`experiments/failure_checks.py`). At temperature 0 most cells are 3 identical runs, so a 3/3 is close to one observation.
@@ -214,6 +215,93 @@ Every number the article could quote, with the file it comes from. `python exper
 | Ollama version of the 6 extension runs | 0.40.18 | `experiments/runs/settings.json` |
 | Ollama version of the control runs | 0.40.18 | `experiments/runs_recheck/settings.json` |
 
+## Skill v1 vs v2 on the same traces: failed flawed traces, by scenario
+
+| Claim | Value | Source |
+|---|---|---|
+| cancel_bare_number: failure type right (primary), v1 (of 3) | 2/3 | `experiments/results_after.md` |
+| cancel_bare_number: failure type right (primary), v2 (of 3) | 1/3 | `experiments/results_after.md` |
+| cancel_bare_number: fix location right (primary), v1 (of 3) | 0/3 | `experiments/results_after.md` |
+| cancel_bare_number: fix location right (primary), v2 (of 3) | 0/3 | `experiments/results_after.md` |
+| cancel_bare_number: fix location named anywhere, v1 (of 3) | 3/3 | `experiments/results_after.md` |
+| cancel_bare_number: fix location named anywhere, v2 (of 3) | 2/3 | `experiments/results_after.md` |
+| cancel_shipped_order: failure type right (primary), v1 (of 3) | 0/3 | `experiments/results_after.md` |
+| cancel_shipped_order: failure type right (primary), v2 (of 3) | 0/3 | `experiments/results_after.md` |
+| cancel_shipped_order: fix location right (primary), v1 (of 3) | 0/3 | `experiments/results_after.md` |
+| cancel_shipped_order: fix location right (primary), v2 (of 3) | 0/3 | `experiments/results_after.md` |
+| cancel_shipped_order: fix location named anywhere, v1 (of 3) | 0/3 | `experiments/results_after.md` |
+| cancel_shipped_order: fix location named anywhere, v2 (of 3) | 0/3 | `experiments/results_after.md` |
+| return_processing_order: failure type right (primary), v1 (of 3) | 3/3 | `experiments/results_after.md` |
+| return_processing_order: failure type right (primary), v2 (of 3) | 1/3 | `experiments/results_after.md` |
+| return_processing_order: fix location right (primary), v1 (of 3) | 1/3 | `experiments/results_after.md` |
+| return_processing_order: fix location right (primary), v2 (of 3) | 1/3 | `experiments/results_after.md` |
+| return_processing_order: fix location named anywhere, v1 (of 3) | 1/3 | `experiments/results_after.md` |
+| return_processing_order: fix location named anywhere, v2 (of 3) | 1/3 | `experiments/results_after.md` |
+| unneeded_lookup: failure type right (primary), v1 (of 3) | 3/3 | `experiments/results_after.md` |
+| unneeded_lookup: failure type right (primary), v2 (of 3) | 2/3 | `experiments/results_after.md` |
+| unneeded_lookup: fix location right (primary), v1 (of 3) | 3/3 | `experiments/results_after.md` |
+| unneeded_lookup: fix location right (primary), v2 (of 3) | 2/3 | `experiments/results_after.md` |
+| unneeded_lookup: fix location named anywhere, v1 (of 3) | 3/3 | `experiments/results_after.md` |
+| unneeded_lookup: fix location named anywhere, v2 (of 3) | 2/3 | `experiments/results_after.md` |
+
+## Skill v1 vs v2 on the same traces: totals
+
+| Claim | Value | Source |
+|---|---|---|
+| failed flawed traces, failure type right (primary), v1 | 8/12 | `experiments/results_after.md` |
+| failed flawed traces, fix location right (primary), v1 | 4/12 | `experiments/results_after.md` |
+| failed flawed traces, fix location named anywhere, v1 | 7/12 | `experiments/results_after.md` |
+| failed flawed traces, failure type right (primary), v2 | 4/12 | `experiments/results_after.md` |
+| failed flawed traces, fix location right (primary), v2 | 3/12 | `experiments/results_after.md` |
+| failed flawed traces, fix location named anywhere, v2 | 5/12 | `experiments/results_after.md` |
+| flawed traces, v1: failure type right (primary), all traces | 10/16 | `experiments/results_after.md` |
+| flawed traces, v1: fully correct | 10/16 | `experiments/results_after.md` |
+| flawed traces, v1: failed traces reported as no failure | 1/12 | `experiments/results_after.md` |
+| flawed traces, v1: false positives on expected-clean traces | 2/4 | `experiments/results_after.md` |
+| flawed traces, v1: false positives, unambiguous clean traces only | 1/3 | `experiments/results_after.md` |
+| flawed traces, v1: system-prompt edit suggested, any report | 0 of 16 | `experiments/results_after.md` |
+| flawed traces, v2: failure type right (primary), all traces | 7/16 | `experiments/results_after.md` |
+| flawed traces, v2: fully correct | 7/16 | `experiments/results_after.md` |
+| flawed traces, v2: failed traces reported as no failure | 3/12 | `experiments/results_after.md` |
+| flawed traces, v2: false positives on expected-clean traces | 1/4 | `experiments/results_after.md` |
+| flawed traces, v2: false positives, unambiguous clean traces only | 0/3 | `experiments/results_after.md` |
+| flawed traces, v2: system-prompt edit suggested, any report | 0 of 16 | `experiments/results_after.md` |
+| fixed traces, v1: failure type right (primary), all traces | 10/16 | `experiments/results_after.md` |
+| fixed traces, v1: fully correct | 10/16 | `experiments/results_after.md` |
+| fixed traces, v1: failed traces reported as no failure | 3/9 | `experiments/results_after.md` |
+| fixed traces, v1: false positives on expected-clean traces | 3/7 | `experiments/results_after.md` |
+| fixed traces, v1: false positives, unambiguous clean traces only | 1/4 | `experiments/results_after.md` |
+| fixed traces, v1: system-prompt edit suggested, any report | 0 of 16 | `experiments/results_after.md` |
+| fixed traces, v2: failure type right (primary), all traces | 12/16 | `experiments/results_after.md` |
+| fixed traces, v2: fully correct | 11/16 | `experiments/results_after.md` |
+| fixed traces, v2: failed traces reported as no failure | 3/9 | `experiments/results_after.md` |
+| fixed traces, v2: false positives on expected-clean traces | 0/7 | `experiments/results_after.md` |
+| fixed traces, v2: false positives, unambiguous clean traces only | 0/4 | `experiments/results_after.md` |
+| fixed traces, v2: system-prompt edit suggested, any report | 0 of 16 | `experiments/results_after.md` |
+
+## Skill v1 vs v2 on the same traces: use of inconclusive (both variants, 32 reports)
+
+| Claim | Value | Source |
+|---|---|---|
+| v1: reports | 32 | `experiments/results_after.md` |
+| v1: inconclusive as primary label | 5 | `experiments/results_after.md` |
+| v1: misuse (inconclusive under a 'No failure found' summary) | 4 | `experiments/results_after.md` |
+| v1: inconclusive on an expected-clean trace | 3 | `experiments/results_after.md` |
+| v1: explicit no_failure verdict | 0 | `experiments/results_after.md` |
+| v2: reports | 32 | `experiments/results_after.md` |
+| v2: inconclusive as primary label | 2 | `experiments/results_after.md` |
+| v2: misuse (inconclusive under a 'No failure found' summary) | 0 | `experiments/results_after.md` |
+| v2: inconclusive on an expected-clean trace | 0 | `experiments/results_after.md` |
+| v2: explicit no_failure verdict | 16 | `experiments/results_after.md` |
+
+## Skill v1 vs v2 on the same traces: changes
+
+| Claim | Value | Source |
+|---|---|---|
+| Traces whose primary finding type or primary fix location changed | 15/32 | `experiments/results_after.md` |
+| Traces that differ only in secondary findings or later locations | 2 | `experiments/results_after.md` |
+| Traces with the same findings and locations | 15 | `experiments/results_after.md` |
+
 ## Error messages the fix changes
 
 | Claim | Value | Source |
@@ -226,7 +314,7 @@ Every number the article could quote, with the file it comes from. `python exper
 
 | Claim | Value | Source |
 |---|---|---|
-| Tests collected by pytest | 188 | `tests/` |
+| Tests collected by pytest | 201 | `tests/` |
 
 ## Files in this folder
 

@@ -213,6 +213,76 @@ Same scoring as `results_before.md`, with the differences listed in `experiments
 
 Failure types reported on `flawed` traces: `description_overlap`, `inconclusive`, `missing_tool_call`, `tool_error_mishandled`, `unnecessary_tool_call`, `wrong_arguments`, `wrong_tool`. On `fixed` traces: `description_overlap`, `inconclusive`, `tool_error_mishandled`, `unnecessary_tool_call`, `wrong_tool`. Types that appear only on `fixed` traces: none.
 
+## Skill v1 vs v2 on the same traces
+
+**v1** is the skill with the trace-only rule, as used for `experiments/reports/` (everything above). **v2** adds the root-cause tie-break rule, the explicit `fix_location` field (commit `594d363`) and the `no_failure` / `inconclusive` fix. The 32 traces (16 `flawed`, 16 `fixed`), the blinding, the model, the allowed tools (no promptfoo in either) and the scorer are the same; v2 reports are in `experiments/reports_v2/`. Expected labels, the ground truth and the failure checks were not changed after seeing v2 output. No v1 number above was changed.
+
+**One triage per trace, so differences on a single trace may be noise.** The same skill run twice on the same trace can give a different verdict (the model is not deterministic here). Read the totals as rough, and the per-trace list below as a list of changes, not of improvements.
+
+### Traces that actually failed, per scenario (`flawed`; expected-clean traces excluded)
+
+| Scenario | Failed traces | Failure type right (primary), v1 → v2 | Fix location right (primary), v1 → v2 | Fix location named anywhere, v1 → v2 |
+|---|---|---|---|---|
+| cancel_bare_number | 3 | 2/3 → 1/3 | 0/3 → 0/3 | 3/3 → 2/3 |
+| cancel_shipped_order | 3 | 0/3 → 0/3 | 0/3 → 0/3 | 0/3 → 0/3 |
+| return_processing_order | 3 | 3/3 → 1/3 | 1/3 → 1/3 | 1/3 → 1/3 |
+| unneeded_lookup | 3 | 3/3 → 2/3 | 3/3 → 2/3 | 3/3 → 2/3 |
+| **All failed `flawed` traces** | **12** | **8/12 → 4/12** | **4/12 → 3/12** | **7/12 → 5/12** |
+
+### Totals, v1 vs v2 (as written)
+
+| Measure | flawed v1 | flawed v2 | fixed v1 | fixed v2 |
+|---|---|---|---|---|
+| Traces triaged | 16 | 16 | 16 | 16 |
+| Failure type right (primary), all traces | 10/16 | 7/16 | 10/16 | 12/16 |
+| Fully correct (label right, every quote found) | 10/16 | 7/16 | 10/16 | 11/16 |
+| Failed traces: failure type right (primary) | 8/12 | 4/12 | 6/9 | 5/9 |
+| Failed traces: fix location right (primary) | 4/12 | 3/12 | 9/9 | 9/9 |
+| Failed traces: fix location named anywhere | 7/12 | 5/12 | 9/9 | 9/9 |
+| Failed traces reported as no failure (v1: a "No failure found" summary counts) | 1/12 | 3/12 | 3/9 | 3/9 |
+| False positives on expected-clean traces (a failure reported where the agent behaved correctly) | 2/4 | 1/4 | 3/7 | 0/7 |
+| False positives, unambiguous clean traces only | 1/3 | 0/3 | 1/4 | 0/4 |
+| System-prompt edit suggested, any report | 0 of 16 | 0 of 16 | 0 of 16 | 0 of 16 |
+
+### How reports use `inconclusive`
+
+`misuse` = an `inconclusive` finding in a report whose Summary says "No failure found". `on clean` = `inconclusive` as the primary label of an expected-clean trace. `no data named` = an `inconclusive` report with no line saying what data would settle it. `explicit no_failure` = reports with a "Verdict: no_failure" line (the v2 format).
+
+| Count | flawed v1 | flawed v2 | fixed v1 | fixed v2 | both variants v1 | both variants v2 |
+|---|---|---|---|---|---|---|
+| reports | 16 | 16 | 16 | 16 | 32 | 32 |
+| `inconclusive` as primary label | 1 | 2 | 4 | 0 | 5 | 2 |
+| misuse (`inconclusive` under "No failure found") | 1 | 0 | 3 | 0 | 4 | 0 |
+| `inconclusive` on an expected-clean trace | 1 | 0 | 2 | 0 | 3 | 0 |
+| `inconclusive` with no data named | 1 | 0 | 0 | 0 | 1 | 0 |
+| explicit `no_failure` verdict | 0 | 6 | 0 | 10 | 0 | 16 |
+
+### Traces where the verdict changed
+
+A verdict counts as changed when the primary finding type or the primary fix location differs between v1 and v2. Each row is one trace triaged once by each version; "better" and "worse" are against the expected label and location from `experiments/expected_labels.py`, which were not changed.
+
+| Variant | Scenario | Run | Expected | v1 findings → fix location | v2 findings → fix location | Label | Location |
+|---|---|---|---|---|---|---|---|
+| flawed | shipping_policy | 1 | `no_failure` / `none` | `inconclusive` → `none` | `no_failure` → `none` | better | same |
+| flawed | cancel_bare_number † | 1 | `wrong_arguments` / `tool_schema` | `wrong_arguments`, `tool_error_mishandled` → `error_message`, `tool_schema` | `tool_error_mishandled`, `wrong_arguments` → `error_message`, `tool_schema` | worse | same |
+| flawed | return_processing_order † | 1 | `tool_error_mishandled` / `error_message` | `tool_error_mishandled`, `missing_tool_call`, `description_overlap` → `tool_description` | `missing_tool_call` → `tool_description` | worse | same |
+| flawed | unneeded_lookup † | 1 | `unnecessary_tool_call` / `tool_description` | `unnecessary_tool_call` → `tool_description` | `inconclusive` → `none` | worse | worse |
+| flawed | cancel_bare_number † | 2 | `wrong_arguments` / `tool_schema` | `wrong_arguments`, `tool_error_mishandled` → `error_message`, `tool_schema` | `tool_error_mishandled` → `error_message` | worse | same |
+| flawed | cancel_shipped_order † | 2 | `tool_error_mishandled` / `error_message` | `missing_tool_call` → `tool_description` | `no_failure` → `none` | same | same |
+| flawed | return_processing_order † | 2 | `tool_error_mishandled` / `error_message` | `tool_error_mishandled`, `description_overlap`, `missing_tool_call` → `tool_description` | `inconclusive` → `none` | worse | same |
+| flawed | cancel_bare_number † | 3 | `wrong_arguments` / `tool_schema` | `tool_error_mishandled`, `wrong_arguments` → `error_message`, `tool_schema` | `wrong_arguments`, `tool_error_mishandled` → `error_message`, `tool_schema` | better | same |
+| flawed | cancel_shipped_order † | 3 | `tool_error_mishandled` / `error_message` | `missing_tool_call` → `tool_description` | `no_failure` → `none` | same | same |
+| fixed | cancel_bare_number | 1 | `no_failure` / `none` | `inconclusive` → `none` | `no_failure` → `none` | better | same |
+| fixed | cancel_shipped_order † | 1 | `model_error` / `none` | `inconclusive` → `none` | `no_failure` → `none` | same | same |
+| fixed | return_processing_order † | 1 | `no_failure` / `none` | `description_overlap` → `tool_description` | `no_failure` → `none` | better | better |
+| fixed | return_processing_order † | 2 | `no_failure` / `none` | `inconclusive` → `none` | `no_failure` → `none` | better | same |
+| fixed | undo_delivered_order † | 3 | `description_overlap` / `tool_description` | `description_overlap`, `wrong_tool`, `tool_error_mishandled` → `tool_description` | `wrong_tool`, `description_overlap`, `tool_error_mishandled` → `tool_description` | worse | same |
+| fixed | cancel_shipped_order † | 3 | `model_error` / `none` | `inconclusive` → `none` | `no_failure` → `none` | same | same |
+
+Against the expected labels, across all 32 traces: primary finding type 5 better, 6 worse, 21 unchanged in correctness; primary fix location 1 better, 1 worse, 30 unchanged in correctness.
+
+15 of 32 traces changed primary verdict or primary fix location; 2 differ only in secondary findings or in the order of locations after the first; 15 have the same findings and locations. † = ambiguous expected label.
+
 ## Temperature 0.7
 
 5 runs per cell, `flawed` and `fixed` only, three scenarios. Failure rates only; no triage. Same failure rules as above. Saved under `experiments/runs_t07/`.
@@ -272,3 +342,18 @@ The skill's own labels on the `fixed` traces add no failure type that is missing
 
   This store has no `paid` status (`processing`, `shipped`, `delivered`, `cancelled`). The same invented status appears in the suggested fix of 1 of the 16 new `flawed` reports and 1 of the 16 new `fixed` reports; one of them says that the status values are assumptions to replace. The committed report is the one quoted in the article material.
 - **The false positive from the committed reports repeats.** `undo_delivered_order` run 1 on `flawed` got `description_overlap` (high) for a run that did the right thing.
+
+## What didn't improve with skill v2
+
+Skill v2 fixed the thing it was written to fix, and little else. The table is in "Skill v1 vs v2 on the same traces". The same 32 traces were triaged once more with the same scorer and the same expected labels; `expected_labels.py`, `ground_truth.yaml` and `failure_checks.py` were not touched after seeing v2 output.
+
+- **What it fixed.** `inconclusive` under a "No failure found" summary went from 4 reports to 0, and `inconclusive` on an expected-clean trace from 3 to 0. Every v2 report has an explicit `fix_location` line, and the 16 reports with no failure carry a `Verdict: no_failure` line and no Findings section (none has both). False positives on expected-clean traces went from 2/4 to 1/4 (`flawed`) and from 3/7 to 0/7 (`fixed`).
+- **Failure-type accuracy on the 12 failed `flawed` traces got worse, 8/12 → 4/12.** `return_processing_order` went 3/3 → 1/3, `cancel_bare_number` 2/3 → 1/3, `unneeded_lookup` 3/3 → 2/3, and `cancel_shipped_order` stayed 0/3. Across all 32 traces the primary finding type was right on 5 more and wrong on 6 more traces than in v1. With one triage per trace and 15 of 32 traces changing verdict, a change this size is not clearly separable from noise.
+- **Failures were more often called clean.** Failed traces reported as no failure rose from 1/12 to 3/12 on `flawed`. In v2 all three `cancel_shipped_order` reports say "No failure found"; in run 2 the invented "keep the book, you can consider it a sale" and "the return process" offers are filed under "Notes (not findings)". v1 called two of the three `missing_tool_call`. The `no_failure` rules did what they said, but a report that sees no failure is also a report that misses one. The v2 output-format text says an oddity that cannot be settled "is a note", with "a possible problem in an offer the agent made" as the example; that wording may have pushed reports this way. That is a guess; it was not tested, and the ground truth for these scenarios is itself marked ambiguous (the agent reported the error accurately).
+- **The tie-break rule did not move `cancel_bare_number` towards `wrong_arguments`.** In v2 two of three reports put `tool_error_mishandled` first (v1: one of three). The expected label there is ambiguous, and a vague error message can reasonably be called the root cause, but the rule did not make the reports agree with the ground truth.
+- **The explicit `fix_location` field did not improve location accuracy.** On failed `flawed` traces the primary location was right for 3/12 (v1: 4/12) and named anywhere for 5/12 (v1: 7/12). `cancel_bare_number` still names `error_message` first in all three reports (expected `tool_schema`) and `cancel_shipped_order` still never names `error_message`. The field made the value unambiguous to parse, not more often right. On `fixed` traces 9/9 is not a hard test (see above).
+- **Two v2 `inconclusive` verdicts on failed traces are arguably good reasoning that the scorer marks wrong.** For `unneeded_lookup` run 1 the report says the trace cannot show whether the empty search result is a catalog gap or a query-format miss, and names the data that would settle it (what `search_books` returns for "Dune" alone). That is the open question behind `experiments/discovered_bugs.md`, but the expected label is `unnecessary_tool_call`, so it scores as wrong. The expected-label rule was not changed. If a report like this should count, the rule would need to say so.
+- **System-prompt edits: 0 of 32 in v1, 0 of 32 in v2.** Nothing to improve.
+- **No part of the change can be attributed.** v2 is two changes (the tie-break rule and `fix_location` field, then the `no_failure` / `inconclusive` rules), and every version difference above is the combination. The runs used no promptfoo permission in either version, so every report still says its test was not run.
+- **One triage per trace.** The same skill on the same trace can give a different answer. Treat the totals as rough and the list of changed traces as a list of changes, not of improvements.
+- **One quote the verifier rejects is real.** The `fixed` v2 total shows 11/16 fully correct against 12/16 for the label, because one `undo_delivered_order` report quotes `[generation 1] cancel_order {"order_id": "BK-10234"}` and the verifier's bracket-label rule does not accept a digit inside the brackets. The scorer was not changed.

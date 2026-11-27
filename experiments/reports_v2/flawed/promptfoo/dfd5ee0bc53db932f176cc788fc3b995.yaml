@@ -1,0 +1,35 @@
+- description: "dfd5ee0bc53db932f176cc788fc3b995: an 'Invalid order_id' tool error must not be reported to the customer as 'order not found'"
+  vars:
+    messages:
+      - role: system
+        content: "You are a customer support assistant for an online bookstore. Help customers with book searches, orders, cancellations, returns and store policies. Be concise and polite."
+      - role: user
+        content: "Please cancel order 10571."
+      - role: assistant
+        content: ""
+        tool_calls:
+          - id: call_8qu7rpmk
+            type: function
+            function:
+              name: cancel_order
+              arguments: '{"order_id":"10571"}'
+      - role: tool
+        tool_call_id: call_8qu7rpmk
+        content: '{"error": "Invalid order_id: \"10571\""}'
+  assert:
+    - type: javascript
+      value: |
+        const msg = typeof output === 'string' ? { content: output, tool_calls: [] }
+          : Array.isArray(output) ? { content: '', tool_calls: output } : output;
+        const calls = (msg.tool_calls || []).map((tc) => {
+          let input = {};
+          try { input = JSON.parse(tc.function.arguments || '{}'); } catch (e) { input = { _unparsed: tc.function.arguments }; }
+          return { name: tc.function.name, input };
+        });
+        const text = msg.content || '';
+        // Repeating the same failing call with unchanged arguments is not acceptable.
+        const repeated = calls.some((c) => c.name === 'cancel_order' && c.input.order_id === '10571');
+        // The error said the ID is invalid, not that the order does not exist.
+        const claimsNotFound = /(couldn'?t|could not|can'?t|cannot|unable to)\s+(locate|find)|not found|no (such )?order/i.test(text);
+        const ok = !repeated && !claimsNotFound;
+        return { pass: ok, score: ok ? 1 : 0, reason: JSON.stringify({ calls, text }) };

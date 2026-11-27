@@ -115,11 +115,19 @@ For each type: what it is, what in the trace shows it, where the fix usually goe
 
 ## inconclusive
 
-**Definition.** The trace does not contain enough to decide.
+**Definition.** Something looks wrong, and the trace cannot show why or whether. It is for a suspected failure that the trace cannot settle. It is not for a run where nothing is wrong: that is `no_failure`.
 
-**Evidence.** Missing tool definitions, no system prompt, truncated or null generation input, or a user complaint that cannot be matched to anything in the run.
+**Evidence.** A suspicion you can state (an odd answer, a user complaint, an action that may or may not have been right) plus what blocks the decision: missing tool definitions, no system prompt, truncated or null generation input, or a user complaint that cannot be matched to anything in the run.
 
-**Fix.** None proposed. State exactly what would settle it: the tool list, the system prompt, the next turn of the conversation, or what the user expected.
+**Fix.** None proposed. The finding must name the data that would settle it: the tool list, the system prompt, the next turn of the conversation, or what the user expected.
+
+**Telling it apart.**
+- Nothing looks wrong and the answer matches the tool results: `no_failure`, not `inconclusive`. High confidence "that the run is correct" is a `no_failure` verdict.
+- You cannot name a suspected failure and the data that would settle it: it is not `inconclusive`.
+
+## no_failure (a verdict, not a finding type)
+
+A run where the agent did what the user asked and the answer matches the tool results has no findings. The report states the verdict `no_failure`, has no Findings section, and says `fix_location: none`. Do not list a finding to say that the run is fine.
 
 ## Confidence
 

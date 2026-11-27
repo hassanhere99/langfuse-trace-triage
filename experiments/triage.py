@@ -73,7 +73,7 @@ def allowed_tools(out_rel):
             "Write(./**)", "Edit(./**)", f"Bash(python3 {skill}/scripts/*)"]
 
 
-def triage_one(record, variant, work_root, dry_run=False):
+def triage_one(record, variant, work_root, dry_run=False, reports_dir=None):
     trace_id = record["trace_id"]
     src = ROOT / record["file"]
     work = work_root / variant / trace_id
@@ -82,7 +82,7 @@ def triage_one(record, variant, work_root, dry_run=False):
     work.mkdir(parents=True)
     trace_copy = work / f"{trace_id}.json"
     trace_copy.write_text(json.dumps(blind(json.loads(src.read_text())), indent=2, ensure_ascii=False) + "\n")
-    out_dir = ROOT / "experiments" / "reports" / variant
+    out_dir = Path(reports_dir) / variant if reports_dir else ROOT / "experiments" / "reports" / variant
     cmd = ["claude", "-p", PROMPT.format(trace=trace_copy.name, out="."),
            "--plugin-dir", str(ROOT), "--strict-mcp-config", "--mcp-config", '{"mcpServers":{}}',
            "--setting-sources", "project", "--permission-mode", "dontAsk",
@@ -112,6 +112,9 @@ def main(argv=None):
     ap.add_argument("action", choices=["select", "run"])
     ap.add_argument("--variant", required=True)
     ap.add_argument("--runs-dir", default=str(ROOT / "experiments" / "runs"))
+    ap.add_argument("--reports-dir", default=str(ROOT / "experiments" / "reports"),
+                    help="where <variant>/<trace_id>.md goes (skill v2 uses experiments/reports_v2)")
+    ap.add_argument("--work-dir", default=str(ROOT / ".context" / "triage_work"), help="scratch directory for the isolated runs")
     ap.add_argument("--limit", type=int)
     ap.add_argument("--dry-run", action="store_true")
     args = ap.parse_args(argv)
@@ -124,16 +127,16 @@ def main(argv=None):
         print(f"{len(chosen)} traces")
         return 0
 
-    out_dir = ROOT / "experiments" / "reports" / args.variant
+    out_dir = Path(args.reports_dir) / args.variant
     out_dir.mkdir(parents=True, exist_ok=True)
     log_path = out_dir / "triage_log.jsonl"
     done = set()
     if log_path.exists():
         done = {json.loads(l)["trace_id"] for l in log_path.read_text().splitlines() if l.strip() and json.loads(l).get("ok")}
-    work_root = ROOT / ".context" / "triage_work"
+    work_root = Path(args.work_dir)
     todo = [(r, why) for r, why in chosen if r["trace_id"] not in done][: args.limit]
     for i, (r, why) in enumerate(todo, 1):
-        cmd, result = triage_one(r, args.variant, work_root, args.dry_run)
+        cmd, result = triage_one(r, args.variant, work_root, args.dry_run, args.reports_dir)
         if args.dry_run:
             print(" ".join(cmd[:3]), "...")
             continue
