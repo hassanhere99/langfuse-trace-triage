@@ -85,3 +85,56 @@ def test_the_committed_undo_runs_show_which_fix_causes_the_regression():
     by = {v: ag.fraction(ag.cell(runs, v, "undo_delivered_order"), "failure") for v in ("flawed", "desc_only", "errors_only", "fixed")}
     assert by == {"flawed": "0/3", "desc_only": "3/3", "errors_only": "0/3", "fixed": "3/3"}
     assert "description change alone reproduces" in ag.undo_verdict(runs)
+
+
+# --- skill v1 vs v2 ------------------------------------------------------------------------------------------
+
+def _scored(trace_id, labels, locations, clean=False, ambiguous=False, label_ok=False, location_ok=False, run=1):
+    return {"trace_id": trace_id, "scenario": "s", "run": run, "labels": labels, "as_written": labels, "locations": locations,
+            "clean": clean, "ambiguous": ambiguous, "label_ok": label_ok, "location_ok": location_ok,
+            "expected": "x", "expected_location": "y"}
+
+
+def test_verdict_changes_separates_primary_changes_from_secondary_only_and_same():
+    v1 = [_scored("a", ["wrong_arguments", "tool_error_mishandled"], ["tool_schema"]),
+          _scored("b", ["wrong_arguments"], ["tool_schema", "error_message"]),
+          _scored("c", ["wrong_arguments"], ["tool_schema"]),
+          _scored("d", ["inconclusive"], ["none"])]
+    v2 = [_scored("a", ["tool_error_mishandled", "wrong_arguments"], ["tool_schema"]),     # primary label changed
+          _scored("b", ["wrong_arguments"], ["tool_schema"]),                              # secondary location dropped only
+          _scored("c", ["wrong_arguments"], ["tool_schema"]),                              # same
+          _scored("d", ["no_failure"], ["none"])]                                          # primary label changed
+    changed, secondary, same = ag.verdict_changes(v1, v2)
+    assert [a["trace_id"] for a, _ in changed] == ["a", "d"]
+    assert (secondary, same) == (1, 1)
+
+
+def test_verdict_changes_ignores_traces_without_a_v2_report():
+    assert ag.verdict_changes([_scored("a", ["x"], ["none"])], []) == ([], 0, 0)
+
+
+def test_inconclusive_stats_counts_misuse_and_the_v2_verdict_line(tmp_path):
+    (tmp_path / "t1.md").write_text("- Summary: No failure found.\n\n## Findings\n\n### 1. inconclusive (confidence: high)\n")
+    (tmp_path / "t2.md").write_text("- Summary: Something is odd.\n\n## Findings\n\n### 1. inconclusive (confidence: low)\n\nData that would settle it: the system prompt.\n")
+    (tmp_path / "t3.md").write_text("- Summary: No failure found. fine.\n- Verdict: no_failure\n\n## Suggested fix\n\nfix_location: none\n")
+    rows = [{"trace_id": "t1", "clean": True}, {"trace_id": "t2", "clean": False}, {"trace_id": "t3", "clean": True}]
+    assert ag.inconclusive_stats(rows, tmp_path) == {"reports": 3, "inconclusive_primary": 2, "misuse": 1, "on_clean": 1,
+                                                    "no_data": 1, "explicit_no_failure": 1}
+
+
+def test_the_v1_numbers_in_results_after_did_not_change():
+    import json
+    from pathlib import Path
+    import score_new_reports as sn
+    import score_reports as sr
+    root = Path(__file__).resolve().parent.parent
+    gt = sr.load_ground_truth(root / "experiments" / "ground_truth.yaml")
+    runs = json.loads((root / "experiments" / "runs" / "index.json").read_text())["runs"]
+    got = {}
+    for v in ("flawed", "fixed"):
+        rows = sn.score_variant(v, [r for r in runs if r["variant"] == v], root / "experiments" / "reports" / v, gt)
+        t = sr.totals(rows)
+        got[v] = (t["label"], t["n"], t["location_failed"], t["location_failed_any"], t["false_pos"], t["sys_prompt_any"])
+    assert got == {"flawed": (10, 16, (4, 12), (7, 12), (2, 4), 0), "fixed": (10, 16, (9, 9), (9, 9), (3, 7), 0)}
+    text = (root / "experiments" / "results_after.md").read_text()
+    assert "| Label accuracy (primary finding) | 10/16 | 11/16 |" in text

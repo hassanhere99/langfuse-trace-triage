@@ -165,6 +165,55 @@ def build_summary():
     add("Ollama update control (undo_delivered_order, 3 runs each)", "Ollama version of the 6 extension runs", s["extension"]["ollama_version"], "experiments/runs/settings.json")
     add("Ollama update control (undo_delivered_order, 3 runs each)", "Ollama version of the control runs", json.loads((ROOT / "experiments/runs_recheck/settings.json").read_text())["ollama_version"], "experiments/runs_recheck/settings.json")
 
+    # --- skill v1 vs v2 on the same traces
+    sec0 = "Skill v1 vs v2 on the same traces"
+    src = "experiments/results_after.md"
+    data = {}
+    for v in ("flawed", "fixed"):
+        rr = [r for r in runs if r["variant"] == v]
+        data[v] = (rr, sn.score_variant(v, rr, ROOT / "experiments/reports" / v, gts), sn.score_variant(v, rr, ROOT / "experiments/reports_v2" / v, gts))
+    f1, f2 = data["flawed"][1], data["flawed"][2]
+    tot = [0, 0, 0, 0, 0, 0, 0]
+    for scenario in dict.fromkeys(r["scenario"] for r in f1):
+        a = [r for r in f1 if r["scenario"] == scenario and not r["clean"]]
+        b = [r for r in f2 if r["scenario"] == scenario and not r["clean"]]
+        if not a:
+            continue
+        for name, key in (("failure type right (primary)", "label_ok"), ("fix location right (primary)", "location_ok"), ("fix location named anywhere", "location_any")):
+            add(sec0 + ": failed flawed traces, by scenario", f"{scenario}: {name}, v1 (of {len(a)})", frac(sum(r[key] for r in a), len(a)), src)
+            add(sec0 + ": failed flawed traces, by scenario", f"{scenario}: {name}, v2 (of {len(b)})", frac(sum(r[key] for r in b), len(b)), src)
+    for version, rows_v in (("v1", f1), ("v2", f2)):
+        failed = [r for r in rows_v if not r["clean"]]
+        for name, key in (("failure type right (primary)", "label_ok"), ("fix location right (primary)", "location_ok"), ("fix location named anywhere", "location_any")):
+            add(sec0 + ": totals", f"failed flawed traces, {name}, {version}", frac(sum(r[key] for r in failed), len(failed)), src)
+    for v in ("flawed", "fixed"):
+        for version, idx in (("v1", 1), ("v2", 2)):
+            rows_v = data[v][idx]
+            tv = sr.totals(rows_v)
+            failed = [r for r in rows_v if not r["clean"]]
+            adj = sn.score_variant(v, data[v][0], ROOT / ("experiments/reports" if idx == 1 else "experiments/reports_v2") / v, gts, adjusted=True)
+            add(sec0 + ": totals", f"{v} traces, {version}: failure type right (primary), all traces", frac(tv["label"], tv["n"]), src)
+            add(sec0 + ": totals", f"{v} traces, {version}: fully correct", frac(tv["fully_correct"], tv["n"]), src)
+            add(sec0 + ": totals", f"{v} traces, {version}: failed traces reported as no failure", frac(sum(r["labels"] == ["no_failure"] for r in adj if not r["clean"]), len(failed)), src)
+            add(sec0 + ": totals", f"{v} traces, {version}: false positives on expected-clean traces", frac(*tv["false_pos"]), src)
+            add(sec0 + ": totals", f"{v} traces, {version}: false positives, unambiguous clean traces only", frac(sum(r["false_positive"] for r in rows_v if r["clean"] and not r["ambiguous"]), sum(1 for r in rows_v if r["clean"] and not r["ambiguous"])), src)
+            add(sec0 + ": totals", f"{v} traces, {version}: system-prompt edit suggested, any report", f"{tv['sys_prompt_any']} of {tv['n']}", src)
+    for version, d in (("v1", "experiments/reports"), ("v2", "experiments/reports_v2")):
+        st = {k: sum(ag.inconclusive_stats(data[v][1 if version == "v1" else 2], ROOT / d / v)[k] for v in ("flawed", "fixed"))
+              for k in ("reports", "inconclusive_primary", "misuse", "on_clean", "no_data", "explicit_no_failure")}
+        add(sec0 + ": use of inconclusive (both variants, 32 reports)", f"{version}: reports", st["reports"], src)
+        add(sec0 + ": use of inconclusive (both variants, 32 reports)", f"{version}: inconclusive as primary label", st["inconclusive_primary"], src)
+        add(sec0 + ": use of inconclusive (both variants, 32 reports)", f"{version}: misuse (inconclusive under a 'No failure found' summary)", st["misuse"], src)
+        add(sec0 + ": use of inconclusive (both variants, 32 reports)", f"{version}: inconclusive on an expected-clean trace", st["on_clean"], src)
+        add(sec0 + ": use of inconclusive (both variants, 32 reports)", f"{version}: explicit no_failure verdict", st["explicit_no_failure"], src)
+    nc = ns = nsame = 0
+    for v in ("flawed", "fixed"):
+        c, sec_only, same = ag.verdict_changes(data[v][1], data[v][2])
+        nc += len(c); ns += sec_only; nsame += same
+    add(sec0 + ": changes", "Traces whose primary finding type or primary fix location changed", frac(nc, nc + ns + nsame), src)
+    add(sec0 + ": changes", "Traces that differ only in secondary findings or later locations", ns, src)
+    add(sec0 + ": changes", "Traces with the same findings and locations", nsame, src)
+
     # --- error messages
     rows_e = error_changes.error_changes()
     add("Error messages the fix changes", "Error sites changed", len({r[0] for r in rows_e}), "experiments/error_changes.py")
@@ -185,6 +234,7 @@ def render_summary(rows):
            "this file from the committed data, so none of these values is typed by hand. Read `experiments/results_after.md` for what "
            "the numbers do and do not show.\n",
            "## Read this first\n",
+           "- **Skill v2.** The `no_failure` / `inconclusive` fix is in commit `38ff5ed`. The same 32 traces were re-triaged with it (`experiments/reports_v2/`) and are compared with v1 below; v1 numbers did not change.",
            "- **The skill change came after the measurements.** The tie-break rule and the explicit `fix_location` field were added in commit "
            f"`{SKILL_COMMIT}`, after every run, report and score in this experiment. Nothing was re-run with the changed skill.",
            "- **The committed reports in `examples/reports/` were made by an earlier version of the skill**, before the rule \"use only the "

@@ -82,7 +82,20 @@ What this shows, for this model and these scenarios:
 - `cancel_shipped_order` depends on how strictly you read the answers: 3/3 failures on every variant under the rule fixed before the runs, 0/3 on `fixed` and `errors_only` under a looser rule added after reading them. Both are in the results.
 - **`fixed` made `undo_delivered_order` worse** (0/3 → 3/3), and the `order_id` description change alone does it: `desc_only` also fails 3/3 (first call `cancel_order` every time) while `errors_only` is 0/3 like `flawed` (first call `start_return`). The same description text that fixes `cancel_bare_number` tips this scenario onto the wrong side of the `cancel_order` / `start_return` overlap that was left unfixed.
 - At temperature 0, 22 of 26 cells gave 3 identical runs, so 3 runs is close to 1. A separate 5-run batch at temperature 0.7 gave the same pattern for the three scenarios it covered.
-- The skill's reports were scored against a hand-written ground truth. On the 8 committed reports: label right 7/8, fully correct 6/8 (one report states a false fact), 1 false positive on 4 clean-behaviour traces, and no report suggested a system-prompt edit. On 32 new traces it was right on 10/16 (`flawed`) and 10/16 (`fixed`) as written. On the `flawed` traces that actually failed, its first-named fix location was right for 4 of 12 and the right location was named somewhere in the report for 7 of 12 (per scenario in `results_after.md`). The reports say a clean run is "inconclusive" often enough that the table also shows the count with that read as no failure.
+- The skill's reports were scored against a hand-written ground truth. On the 8 committed reports: label right 7/8, fully correct 6/8 (one report states a false fact), 1 false positive on 4 clean-behaviour traces, and no report suggested a system-prompt edit. The same 32 new traces (16 `flawed`, 16 `fixed`) were triaged once by skill **v1** (with the trace-only rule) and once by skill **v2** (adds a root-cause tie-break, an explicit `fix_location` field and a `no_failure` verdict that replaces the misuse of `inconclusive` for clean runs). Same scorer, same expected labels:
+
+  | | v1 | v2 |
+  |---|---|---|
+  | failure type right on the 12 failed `flawed` traces | 8/12 | 4/12 |
+  | fix location right (first named), same traces | 4/12 | 3/12 |
+  | fix location named anywhere, same traces | 7/12 | 5/12 |
+  | failed `flawed` traces reported as no failure | 1/12 | 3/12 |
+  | failure type right on all traces, `flawed` / `fixed` | 10/16 / 10/16 | 7/16 / 12/16 |
+  | false positives on expected-clean traces, `flawed` / `fixed` | 2/4 / 3/7 | 1/4 / 0/7 |
+  | reports that file a clean run under `inconclusive` | 4 of 32 | 0 of 32 |
+  | suggested a system-prompt edit | 0 of 32 | 0 of 32 |
+
+  v2 fixed the `inconclusive` misuse and removed the clean-trace false positives on `fixed`, but it did not make the diagnoses better: it found the right failure type less often, and it called failed runs clean more often. There is one triage per trace and 15 of 32 traces changed verdict, so the totals are rough. `results_after.md` lists every trace whose verdict changed.
 
 Read [`experiments/results_before.md`](experiments/results_before.md) (the committed reports vs the ground truth), [`experiments/results_after.md`](experiments/results_after.md) (runs, promptfoo, new triage, temperature 0.7 and a "what didn't work" section), [`experiments/discovered_bugs.md`](experiments/discovered_bugs.md) (a `search_books` bug found while scoring, left unfixed) and [`docs/article-assets/SUMMARY.md`](docs/article-assets/SUMMARY.md) (every number above with its source file).
 
@@ -292,12 +305,12 @@ uv pip install -r requirements.txt -r demo-agent/requirements.txt    # or: pytho
 
 Instead of calling `.venv/bin/python`, you can run `source .venv/bin/activate` first and use `python`.
 
-The tests need no network access, API keys or model. Current result: 188 passed, 0 skipped (the original 34 plus 154 added for the variants, the experiment tooling and the docs). They cover:
+The tests need no network access, API keys or model. Current result: 201 passed, 0 skipped (the original 34 plus 167 added for the variants, the experiment tooling and the docs). They cover:
 
 - **The skill's scripts (34 tests, the original suite).** `summarize_trace.py`: Anthropic-style and OpenAI-style tool calls, tool errors with and without an `ERROR` level, several generations ordered by time, missing or null fields, odd inputs that must not crash, truncation, the command line, and a pass over every committed trace in `examples/traces/`. `fetch_trace.py`: rebuilding a trace from paged v2 observations plus scores against a local fake server, the not-found, other-HTTP-error and network-error exit codes, missing keys and the `.env` parser.
 - **The demo agent's variants.** `flawed` tool definitions equal `examples/promptfoo/tools.json`; `fixed`, `desc_only` and `errors_only` each differ from `flawed` in exactly the claimed places (definitions diffed path by path, every error message compared); the control descriptions are unchanged; successful results and order-ID validation are identical across variants; the agent passes the variant, temperature and trace metadata through.
 - **The experiment tooling.** The report parser and scorers (labels, fix locations, evidence quotes, false positives, system-prompt edits), the ground-truth file against the committed traces, the per-run failure checks against the eight committed traces, the expected-label rules, the run plans (78 main runs, 30 at temperature 0.7, 6 control runs), the export step and the triage driver's selection and blinding.
-- **The skill's text.** The tie-break rule and the `fix_location` field are present, and the article assets are byte-identical copies with sourced numbers.
+- **The skill's text.** The tie-break rule, the `fix_location` field and the `no_failure` / `inconclusive` rules are present, a report written from the `no_failure` template parses as no failure, and the article assets are byte-identical copies with sourced numbers.
 
 CI runs the same command on Python 3.10 and 3.12.
 
