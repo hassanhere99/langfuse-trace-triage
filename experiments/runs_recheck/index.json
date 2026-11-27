@@ -1,0 +1,152 @@
+{
+  "settings": {
+    "experiment": "before-after-2026-11",
+    "plan": "recheck",
+    "model": "llama3.2:3b",
+    "base_url": "http://localhost:11434/v1",
+    "ollama_version": "0.40.18",
+    "temperature": 0,
+    "seed": null,
+    "max_tokens": 4096,
+    "max_iterations": 6,
+    "runs_per_cell": 3,
+    "variants": {
+      "flawed": [
+        "undo_delivered_order"
+      ],
+      "fixed": [
+        "undo_delivered_order"
+      ]
+    },
+    "system_prompt": "You are a customer support assistant for an online bookstore. Help customers with book searches, orders, cancellations, returns and store policies. Be concise and polite.",
+    "packages": {
+      "openai": "3.60.0",
+      "langfuse": "5.2.0"
+    },
+    "python": "3.13.7",
+    "endpoint_vars_defaulted": [
+      "OPENAI_BASE_URL",
+      "OPENAI_API_KEY"
+    ],
+    "env_demo_model_ignored": "claude-haiku-5-5",
+    "started_at": "2026-11-27T11:47:23+00:00",
+    "finished_at": "2026-11-27T11:49:01+00:00",
+    "last_batch_seconds": 98
+  },
+  "runs": [
+    {
+      "variant": "flawed",
+      "scenario": "undo_delivered_order",
+      "run": 1,
+      "trace_id": "88913934c7ba5b1c74e943e2a6e09264",
+      "elapsed_s": 9.8,
+      "failure": false,
+      "flaw_triggered": false,
+      "note": "start_return worked: True; cancel_order called: False; status check first: False",
+      "tools": [
+        "start_return"
+      ],
+      "tool_errors": 0,
+      "final_text": "To initiate the return process for your order BK-10234, I've created a return ID RT-10234. A prepaid return label has been emailed to you. Please print and attach the label to the outside of the package, including all original packaging and accessories. Once you've shipped the item, please return it to us within 10 days. If you have any questions or concerns, please don't hesitate to contact us. We're here to help.",
+      "misleading_not_found": false,
+      "first_tool": "start_return",
+      "failure_response_rule": false,
+      "file": "experiments/runs_recheck/flawed/undo_delivered_order/run_1.json"
+    },
+    {
+      "variant": "fixed",
+      "scenario": "undo_delivered_order",
+      "run": 1,
+      "trace_id": "aa5c6d0c2ae59fec300a56eb2514e649",
+      "elapsed_s": 13.6,
+      "failure": true,
+      "flaw_triggered": true,
+      "note": "start_return worked: False; cancel_order called: True; status check first: False",
+      "tools": [
+        "cancel_order"
+      ],
+      "tool_errors": 1,
+      "final_text": "I apologize for the inconvenience, but since your order BK-10234 has been delivered, it can no longer be cancelled. However, you can return the item and receive a refund. To initiate the return process, please contact our customer service team and we will provide you with a return shipping label and instructions on how to proceed.",
+      "misleading_not_found": false,
+      "first_tool": "cancel_order",
+      "failure_response_rule": true,
+      "file": "experiments/runs_recheck/fixed/undo_delivered_order/run_1.json"
+    },
+    {
+      "variant": "flawed",
+      "scenario": "undo_delivered_order",
+      "run": 2,
+      "trace_id": "59b3f6481450952edfb10c46b7d71808",
+      "elapsed_s": 16.5,
+      "failure": false,
+      "flaw_triggered": false,
+      "note": "start_return worked: True; cancel_order called: False; status check first: False",
+      "tools": [
+        "start_return"
+      ],
+      "tool_errors": 0,
+      "final_text": "Thank you for reaching out to us about your order BK-10234. I've initiated the return process for you. A prepaid return label has been emailed to the email address associated with your account. Please print and affix the label to the outside of the package, and then ship it back to us at the address provided in the email. Once we receive the returned item, we'll process a full refund to the original payment method. If you have any questions or concerns, please don't hesitate to contact us.",
+      "misleading_not_found": false,
+      "first_tool": "start_return",
+      "failure_response_rule": false,
+      "file": "experiments/runs_recheck/flawed/undo_delivered_order/run_2.json"
+    },
+    {
+      "variant": "fixed",
+      "scenario": "undo_delivered_order",
+      "run": 2,
+      "trace_id": "428fa1a466ed7dffef2706f89182b5cf",
+      "elapsed_s": 13.9,
+      "failure": true,
+      "flaw_triggered": true,
+      "note": "start_return worked: False; cancel_order called: True; status check first: False",
+      "tools": [
+        "cancel_order"
+      ],
+      "tool_errors": 1,
+      "final_text": "I apologize for the inconvenience, but since your order BK-10234 has been delivered, it can no longer be cancelled. However, you can return the item and receive a refund. To initiate the return process, please contact our customer service team and we will provide you with a return shipping label and instructions on how to proceed.",
+      "misleading_not_found": false,
+      "first_tool": "cancel_order",
+      "failure_response_rule": true,
+      "file": "experiments/runs_recheck/fixed/undo_delivered_order/run_2.json"
+    },
+    {
+      "variant": "flawed",
+      "scenario": "undo_delivered_order",
+      "run": 3,
+      "trace_id": "fef0b49e30b84ba56f94a75c3832fa2a",
+      "elapsed_s": 16.7,
+      "failure": false,
+      "flaw_triggered": false,
+      "note": "start_return worked: True; cancel_order called: False; status check first: False",
+      "tools": [
+        "start_return"
+      ],
+      "tool_errors": 0,
+      "final_text": "Thank you for reaching out to us about your order BK-10234. I've initiated the return process for you. A prepaid return label has been emailed to the email address associated with your account. Please print and affix the label to the outside of the package, and then ship it back to us at the address provided in the email. Once we receive the returned item, we'll process a full refund to the original payment method. If you have any questions or concerns, please don't hesitate to contact us.",
+      "misleading_not_found": false,
+      "first_tool": "start_return",
+      "failure_response_rule": false,
+      "file": "experiments/runs_recheck/flawed/undo_delivered_order/run_3.json"
+    },
+    {
+      "variant": "fixed",
+      "scenario": "undo_delivered_order",
+      "run": 3,
+      "trace_id": "6c3e1d969b23d4bda68e29d5d8aa7c2b",
+      "elapsed_s": 17.5,
+      "failure": true,
+      "flaw_triggered": true,
+      "note": "start_return worked: False; cancel_order called: True; status check first: False",
+      "tools": [
+        "cancel_order"
+      ],
+      "tool_errors": 1,
+      "final_text": "I apologize for the inconvenience, but since your order BK-10234 has been delivered, it can no longer be cancelled. However, you can return the item and receive a refund. To initiate the return process, please contact our customer service team and we will provide you with a return shipping label and instructions on how to proceed.",
+      "misleading_not_found": false,
+      "first_tool": "cancel_order",
+      "failure_response_rule": true,
+      "file": "experiments/runs_recheck/fixed/undo_delivered_order/run_3.json"
+    }
+  ]
+}

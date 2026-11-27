@@ -2,6 +2,8 @@
 
 Use one of these types per finding. A trace can have several findings. Examples use a bookstore support agent.
 
+When a symptom (wrong tool, wrong arguments…) and a root cause (overlapping descriptions, missing format…) both fit, label the root cause, and put the symptom in the evidence.
+
 For each type: what it is, what in the trace shows it, where the fix usually goes, and how to tell it from its neighbours.
 
 ## wrong_tool

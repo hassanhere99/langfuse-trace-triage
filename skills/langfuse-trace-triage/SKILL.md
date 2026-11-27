@@ -41,9 +41,12 @@ Scripts are in `${CLAUDE_SKILL_DIR}/scripts/` (the directory containing this fil
 
 5. **Compare and classify.** Match what happened against the types in [reference/failure-types.md](reference/failure-types.md). A trace can have several findings. Give each a confidence level (high, medium, low) and quote the exact tool call or output as evidence. A score or thumbs-down on the trace shows that someone was unhappy, not why.
 
+   When a symptom (wrong tool, wrong arguments…) and a root cause (overlapping descriptions, missing format…) both fit, label the root cause, and put the symptom in the evidence.
+
+
 6. **Place the fix** using the principle above. Show before and after text for the tool description, schema or prompt line you would change. Prefer the smallest change that removes the cause.
 
-7. **Write the report** in the format in [reference/output-format.md](reference/output-format.md), including a promptfoo test case that replays the failing generation. Save the report as `<trace_id>.md` and the test as `<trace_id>.yaml` in the directory the user names (the current directory if they name none).
+7. **Write the report** in the format in [reference/output-format.md](reference/output-format.md), with an explicit `fix_location` field and a promptfoo test case that replays the failing generation. Save the report as `<trace_id>.md` and the test as `<trace_id>.yaml` in the directory the user names (the current directory if they name none).
 
 ## Limits to state in the report
 

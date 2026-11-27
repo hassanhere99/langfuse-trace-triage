@@ -1,0 +1,24 @@
+# Regression test, not a failure reproduction: no failure was found in this trace.
+# The assertions describe the behaviour that was observed and is correct, so this
+# is expected to PASS against the recorded tools.json.
+- description: "f2009721d49e6edfc061dd029a8b52f5: shipping question should call get_store_policy with topic=shipping"
+  vars:
+    messages:
+      - role: system
+        content: "You are a customer support assistant for an online bookstore. Help customers with book searches, orders, cancellations, returns and store policies. Be concise and polite."
+      - role: user
+        content: "How long does standard shipping take and what does it cost?"
+  assert:
+    - type: javascript
+      value: |
+        const msg = typeof output === 'string' ? { content: output, tool_calls: [] }
+          : Array.isArray(output) ? { content: '', tool_calls: output } : output;
+        const calls = (msg.tool_calls || []).map((tc) => {
+          let input = {};
+          try { input = JSON.parse(tc.function.arguments || '{}'); } catch (e) { input = { _unparsed: tc.function.arguments }; }
+          return { name: tc.function.name, input };
+        });
+        const call = calls[0];
+        if (!call) return { pass: false, score: 0, reason: 'no tool call in output' };
+        const ok = call.name === 'get_store_policy' && call.input.topic === 'shipping';
+        return { pass: ok, score: ok ? 1 : 0, reason: JSON.stringify(call) };

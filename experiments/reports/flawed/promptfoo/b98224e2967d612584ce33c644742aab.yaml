@@ -1,0 +1,38 @@
+- description: "b98224e2967d612584ce33c644742aab: after cancel_order fails on a shipped order, do not offer capabilities no tool provides"
+  vars:
+    messages:
+      - role: system
+        content: "You are a customer support assistant for an online bookstore. Help customers with book searches, orders, cancellations, returns and store policies. Be concise and polite."
+      - role: user
+        content: "Cancel order BK-10388, I changed my mind."
+      - role: assistant
+        content: ""
+        tool_calls:
+          - id: call_sgchbl17
+            type: function
+            function:
+              name: cancel_order
+              arguments: '{"order_id":"BK-10388"}'
+      - role: tool
+        tool_call_id: call_sgchbl17
+        content: '{"error": "Order BK-10388 cannot be cancelled because its status is shipped."}'
+  assert:
+    - type: javascript
+      value: |
+        const msg = typeof output === 'string' ? { content: output, tool_calls: [] }
+          : Array.isArray(output) ? { content: '', tool_calls: output } : output;
+        const calls = (msg.tool_calls || []).map((tc) => {
+          let input = {};
+          try { input = JSON.parse(tc.function.arguments || '{}'); } catch (e) { input = { _unparsed: tc.function.arguments }; }
+          return { name: tc.function.name, input };
+        });
+        const text = msg.content || '';
+        // The reply must say the order is shipped and cannot be cancelled,
+        // and must not promise a return shipping label (no tool produces one).
+        const saysShipped = /shipped/i.test(text) && /cannot|can't|unable|not able/i.test(text);
+        const offersLabel = /label/i.test(text);
+        const ok = saysShipped && !offersLabel;
+        return { pass: ok, score: ok ? 1 : 0, reason: JSON.stringify({ saysShipped, offersLabel, calls, text }) };
+    # LLM-graded
+    - type: llm-rubric
+      value: The reply tells the customer the order cannot be cancelled because it has shipped, and does not promise anything the store's tools cannot do (for example a return shipping label).

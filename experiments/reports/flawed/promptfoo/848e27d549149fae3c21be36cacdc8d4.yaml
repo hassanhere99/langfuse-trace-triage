@@ -1,0 +1,42 @@
+- description: "848e27d549149fae3c21be36cacdc8d4: return refused because order is processing; agent should move to cancel_order, not send the customer away"
+  vars:
+    messages:
+      - role: system
+        content: "You are a customer support assistant for an online bookstore. Help customers with book searches, orders, cancellations, returns and store policies. Be concise and polite."
+      - role: user
+        content: "I don't want the book in order BK-10571 anymore, please start a return."
+      - role: assistant
+        content: ""
+        tool_calls:
+          - id: call_y9z0p2nu
+            type: function
+            function:
+              name: start_return
+              arguments: '{"order_id":"BK-10571","reason":"The book is no longer wanted"}'
+      - role: tool
+        tool_call_id: call_y9z0p2nu
+        content: '{"error": "Order BK-10571 is not eligible for return because its status is processing."}'
+  assert:
+    - type: javascript
+      value: |
+        const msg = typeof output === 'string' ? { content: output, tool_calls: [] }
+          : Array.isArray(output) ? { content: '', tool_calls: output } : output;
+        const calls = (msg.tool_calls || []).map((tc) => {
+          let input = {};
+          try { input = JSON.parse(tc.function.arguments || '{}'); } catch (e) { input = { _unparsed: tc.function.arguments }; }
+          return { name: tc.function.name, input };
+        });
+        const text = msg.content || '';
+        // Correct next step: cancel the unshipped order (or at least offer to).
+        const cancelled = calls.some((c) => c.name === 'cancel_order' && c.input.order_id === 'BK-10571');
+        const offered = calls.length === 0 && /cancel/i.test(text);
+        const ok = cancelled || offered;
+        return { pass: ok, score: ok ? 1 : 0, reason: JSON.stringify({ calls, text }) };
+    - type: javascript
+      value: |
+        const msg = typeof output === 'string' ? { content: output, tool_calls: [] }
+          : Array.isArray(output) ? { content: '', tool_calls: output } : output;
+        const text = msg.content || '';
+        // Must not just hand the customer off to support while a cancellation is possible.
+        const ok = !/contact (our )?(customer )?support/i.test(text);
+        return { pass: ok, score: ok ? 1 : 0, reason: text };

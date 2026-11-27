@@ -27,6 +27,7 @@ Evidence:
 
 ## Suggested fix
 
+fix_location: <one or more of tool_description, tool_schema, error_message, system_prompt, none; comma-separated, the main one first>
 Location: <tool description | schema | server behaviour | system prompt> of `<tool name>`
 
 Why here: <one sentence applying the fix-location principle>
@@ -47,6 +48,7 @@ Why here: <one sentence applying the fix-location principle>
 
 Notes:
 
+- `fix_location` is required in every report and uses only these values: `tool_description` (a tool's description text), `tool_schema` (a parameter's description, enum, pattern or example), `error_message` (the text a tool returns on failure, or other server behaviour), `system_prompt`, or `none` (no failure, or `inconclusive`). The free-text `Location:` line after it says which tool and why.
 - Scores that come from a script (an automated check) are not user feedback. Label them by what they are.
 - If the result is `inconclusive`, omit the diff and the test case, and list the data needed instead.
 - Keep diffs minimal. Show only the lines that change, with enough context to find them.

@@ -51,6 +51,43 @@ The reports predate the rule that the skill uses only the trace being triaged. T
 
 These traces and reports belong to `llama3.2:3b`. If you change the model, regenerate the example traces and reports with the new model (see Regenerating the examples). Do not relabel the old ones.
 
+## Experiment: do the fixes work?
+
+The example above shows the skill finding problems. [`experiments/`](experiments/) measures whether fixing them helps. The same eight scenarios were run on `llama3.2:3b` (temperature 0, no seed, 3 runs each; `desc_only` and `errors_only` on five of the eight) against four versions of the demo agent's tools, selected with `AGENT_VARIANT` in `.env`:
+
+| variant | what it changes |
+|---|---|
+| `flawed` | nothing: the tools the examples were made with |
+| `desc_only` | the `order_id` description states the format (`BK-` followed by 5 digits, e.g. `BK-10571`) |
+| `errors_only` | error messages say what to do next (8 error sites, 12 messages; the full list is in `results_after.md`) |
+| `fixed` | both |
+
+The `cancel_order` / `start_return` description overlap is left alone in every variant, as a control. Failures out of 3 runs (a run fails by the rules in [`experiments/failure_checks.py`](experiments/failure_checks.py)); blank means not run:
+
+| scenario | flawed | fixed | desc_only | errors_only |
+|---|---|---|---|---|
+| search_by_title | 0/3 | 0/3 | | |
+| shipping_policy | 0/3 | 0/3 | | |
+| return_window_from_memory | 0/3 | 0/3 | | |
+| undo_delivered_order | 0/3 | **3/3** | **3/3** | 0/3 |
+| cancel_bare_number | 3/3 | 0/3 | 0/3 | 3/3 |
+| cancel_shipped_order | 3/3 | 3/3 | 3/3 | 3/3 |
+| return_processing_order | 3/3 | 0/3 | 3/3 | 0/3 |
+| unneeded_lookup | 3/3 | 3/3 | 3/3 | 3/3 |
+
+What this shows, for this model and these scenarios:
+
+- The description fix removes the wrong-format call (`cancel_bare_number` 3/3 → 0/3) and does nothing for the failures after an error.
+- The error fix changes what the agent does after an error (`return_processing_order` 3/3 → 0/3), but did not fix the bare-number case: the model learned the format from the error and asked the customer for it instead of retrying.
+- `cancel_shipped_order` depends on how strictly you read the answers: 3/3 failures on every variant under the rule fixed before the runs, 0/3 on `fixed` and `errors_only` under a looser rule added after reading them. Both are in the results.
+- **`fixed` made `undo_delivered_order` worse** (0/3 → 3/3), and the `order_id` description change alone does it: `desc_only` also fails 3/3 (first call `cancel_order` every time) while `errors_only` is 0/3 like `flawed` (first call `start_return`). The same description text that fixes `cancel_bare_number` tips this scenario onto the wrong side of the `cancel_order` / `start_return` overlap that was left unfixed.
+- At temperature 0, 22 of 26 cells gave 3 identical runs, so 3 runs is close to 1. A separate 5-run batch at temperature 0.7 gave the same pattern for the three scenarios it covered.
+- The skill's reports were scored against a hand-written ground truth. On the 8 committed reports: label right 7/8, fully correct 6/8 (one report states a false fact), 1 false positive on 4 clean-behaviour traces, and no report suggested a system-prompt edit. On 32 new traces it was right on 10/16 (`flawed`) and 10/16 (`fixed`) as written. On the `flawed` traces that actually failed, its first-named fix location was right for 4 of 12 and the right location was named somewhere in the report for 7 of 12 (per scenario in `results_after.md`). The reports say a clean run is "inconclusive" often enough that the table also shows the count with that read as no failure.
+
+Read [`experiments/results_before.md`](experiments/results_before.md) (the committed reports vs the ground truth), [`experiments/results_after.md`](experiments/results_after.md) (runs, promptfoo, new triage, temperature 0.7 and a "what didn't work" section), [`experiments/discovered_bugs.md`](experiments/discovered_bugs.md) (a `search_books` bug found while scoring, left unfixed) and [`docs/article-assets/SUMMARY.md`](docs/article-assets/SUMMARY.md) (every number above with its source file).
+
+Two things to know before quoting any of it. The committed reports in `examples/reports/` were made by an earlier version of the skill, before the rule "use only the trace being triaged"; the new reports use the skill with that rule. And the skill gained a root-cause tie-break rule and an explicit `fix_location` field after all measurements (commit `594d363`); nothing was re-run with it.
+
 ## Install
 
 Two ways to put the skill where Claude Code finds it.
@@ -103,7 +140,7 @@ The repo includes small hand-made trace files for the tests, for example `tests/
 
 `summarize_trace.py` prints a timeline: user message, each generation, each tool call with arguments and result, errors, final answer, scores, and the tool definitions recovered from the generation input. It accepts a trace body, a `{"trace": ..., "observations": ...}` wrapper, or a bare list of observations. Options: `--json` for structured output, `--max-chars N` to change truncation (default 500, 0 for no limit), and `-` to read stdin.
 
-`fetch_trace.py` makes only GET requests. It uses Langfuse's v2 observations API and v3 scores API, and rebuilds a trace object from the observations. The v2 API has no trace-level fields, so `name`, `input`, `output` and `metadata` come from the root observation, and the output carries a `reconstructedFrom` key saying so. It does this because `GET /api/public/traces/{id}` is deprecated and Langfuse Cloud no longer serves it. For self-hosted servers that have no v2 routes, it falls back to that legacy endpoint.
+> **Langfuse Cloud API change.** Langfuse Cloud retired `GET /api/public/traces/{id}` on 2026-11-16, so a fetch script that used it stops working there. `fetch_trace.py` instead reads the trace's observations from the v2 observations API (`GET /api/public/v2/observations?traceId=...`) and its scores from the v3 scores API (`GET /api/public/v3/scores`), and rebuilds the trace object from them. The v2 API has no trace-level fields, so `name`, `input`, `output` and `metadata` come from the root observation, and the output carries a `reconstructedFrom` key saying so. Self-hosted Langfuse v3 servers have no v2 routes; for those, the script falls back to the legacy `GET /api/public/traces/{id}` endpoint. It makes only GET requests.
 
 Exit codes of `fetch_trace.py`:
 
@@ -249,13 +286,20 @@ The 5 passing control tests still pass. The three repeats were identical at temp
 
 ```
 uv venv .venv
-uv pip install -r requirements.txt    # or: python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
+uv pip install -r requirements.txt -r demo-agent/requirements.txt    # or: python3 -m venv .venv && .venv/bin/pip install -r requirements.txt -r demo-agent/requirements.txt
 .venv/bin/python -m pytest
 ```
 
 Instead of calling `.venv/bin/python`, you can run `source .venv/bin/activate` first and use `python`.
 
-The tests cover `summarize_trace.py` and `fetch_trace.py` using fixtures in `tests/fixtures/`. They need no network access or API keys. Current result: 34 passed, 0 skipped. This includes tests that check the traces in `examples/traces/`.
+The tests need no network access, API keys or model. Current result: 188 passed, 0 skipped (the original 34 plus 154 added for the variants, the experiment tooling and the docs). They cover:
+
+- **The skill's scripts (34 tests, the original suite).** `summarize_trace.py`: Anthropic-style and OpenAI-style tool calls, tool errors with and without an `ERROR` level, several generations ordered by time, missing or null fields, odd inputs that must not crash, truncation, the command line, and a pass over every committed trace in `examples/traces/`. `fetch_trace.py`: rebuilding a trace from paged v2 observations plus scores against a local fake server, the not-found, other-HTTP-error and network-error exit codes, missing keys and the `.env` parser.
+- **The demo agent's variants.** `flawed` tool definitions equal `examples/promptfoo/tools.json`; `fixed`, `desc_only` and `errors_only` each differ from `flawed` in exactly the claimed places (definitions diffed path by path, every error message compared); the control descriptions are unchanged; successful results and order-ID validation are identical across variants; the agent passes the variant, temperature and trace metadata through.
+- **The experiment tooling.** The report parser and scorers (labels, fix locations, evidence quotes, false positives, system-prompt edits), the ground-truth file against the committed traces, the per-run failure checks against the eight committed traces, the expected-label rules, the run plans (78 main runs, 30 at temperature 0.7, 6 control runs), the export step and the triage driver's selection and blinding.
+- **The skill's text.** The tie-break rule and the `fix_location` field are present, and the article assets are byte-identical copies with sourced numbers.
+
+CI runs the same command on Python 3.10 and 3.12.
 
 ## Limitations
 
@@ -263,6 +307,7 @@ The tests cover `summarize_trace.py` and `fetch_trace.py` using fixtures in `tes
 - It needs the tool definitions. It recovers them from the generation input in the trace; if they are not there, you have to supply them.
 - The promptfoo tests replay a single model step, not the whole agent, and model output varies between runs. Run a test before and after the fix. In the fix loop above, description changes alone fixed 1 of 5 failing tests with the small example model.
 - `fetch_trace.py` rebuilds the trace from observations, so trace-level fields come from the root observation.
+- The experiment is one small model, one machine and mostly temperature 0, where repeated runs are nearly identical. Failure checks are regular expressions, and the ground truth is partly judgement. See `experiments/results_after.md` before quoting any number.
 - `summarize_trace.py` pairs requested tool calls with tool observations by name and arguments, so identical repeated calls can be paired wrongly.
 
 More notes on the demo agent and the example model are in [demo-agent/README.md](demo-agent/README.md#notes-and-limitations).
@@ -270,3 +315,5 @@ More notes on the demo agent and the example model are in [demo-agent/README.md]
 ## License
 
 MIT. Copyright Muhammad Hassan. See [LICENSE](LICENSE).
+
+Author: Muhammad Hassan (@hassanhere99).

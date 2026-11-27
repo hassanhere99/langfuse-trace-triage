@@ -1,0 +1,66 @@
+{
+  "experiment": "before-after-2026-11",
+  "plan": "main",
+  "model": "llama3.2:3b",
+  "base_url": "http://localhost:11434/v1",
+  "ollama_version": "0.40.17",
+  "temperature": 0,
+  "seed": null,
+  "max_tokens": 4096,
+  "max_iterations": 6,
+  "runs_per_cell": 3,
+  "variants": {
+    "flawed": [
+      "search_by_title",
+      "shipping_policy",
+      "undo_delivered_order",
+      "cancel_bare_number",
+      "return_window_from_memory",
+      "cancel_shipped_order",
+      "return_processing_order",
+      "unneeded_lookup"
+    ],
+    "fixed": [
+      "search_by_title",
+      "shipping_policy",
+      "undo_delivered_order",
+      "cancel_bare_number",
+      "return_window_from_memory",
+      "cancel_shipped_order",
+      "return_processing_order",
+      "unneeded_lookup"
+    ],
+    "desc_only": [
+      "cancel_bare_number",
+      "cancel_shipped_order",
+      "return_processing_order",
+      "unneeded_lookup"
+    ],
+    "errors_only": [
+      "cancel_bare_number",
+      "cancel_shipped_order",
+      "return_processing_order",
+      "unneeded_lookup"
+    ]
+  },
+  "system_prompt": "You are a customer support assistant for an online bookstore. Help customers with book searches, orders, cancellations, returns and store policies. Be concise and polite.",
+  "packages": {
+    "openai": "3.60.0",
+    "langfuse": "5.2.0"
+  },
+  "python": "3.13.7",
+  "endpoint_vars_defaulted": [
+    "OPENAI_BASE_URL",
+    "OPENAI_API_KEY"
+  ],
+  "env_demo_model_ignored": "claude-haiku-5-5",
+  "started_at": "2026-11-26T18:42:57+00:00",
+  "finished_at": "2026-11-27T11:47:20+00:00",
+  "last_batch_seconds": 119,
+  "correction": "settings.json originally recorded model=claude-haiku-5-5, copied from .env after check_langfuse_project re-read it. The runs themselves used llama3.2:3b: every generation in the exported traces has model llama3.2:3b, and agent.run_turn was called with model=llama3.2:3b. Corrected by hand after the runs; the runner was fixed.",
+  "extension": {
+    "what": "undo_delivered_order x 3 runs added for desc_only and errors_only after the first 72 runs, to find which fix caused the regression under fixed",
+    "ollama_version": "0.40.18",
+    "note": "Ollama was updated from 0.40.17 between the first 72 runs and this extension; see experiments/runs_recheck/ for the control"
+  }
+}

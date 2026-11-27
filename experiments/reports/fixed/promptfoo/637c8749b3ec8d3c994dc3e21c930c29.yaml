@@ -1,0 +1,21 @@
+- description: "637c8749b3ec8d3c994dc3e21c930c29: return request on an order of unknown shipping state should check status before start_return"
+  vars:
+    messages:
+      - role: system
+        content: "You are a customer support assistant for an online bookstore. Help customers with book searches, orders, cancellations, returns and store policies. Be concise and polite."
+      - role: user
+        content: "I don't want the book in order BK-10571 anymore, please start a return."
+  assert:
+    - type: javascript
+      value: |
+        const msg = typeof output === 'string' ? { content: output, tool_calls: [] }
+          : Array.isArray(output) ? { content: '', tool_calls: output } : output;
+        const calls = (msg.tool_calls || []).map((tc) => {
+          let input = {};
+          try { input = JSON.parse(tc.function.arguments || '{}'); } catch (e) { input = { _unparsed: tc.function.arguments }; }
+          return { name: tc.function.name, input };
+        });
+        const call = calls[0];
+        if (!call) return { pass: false, score: 0, reason: 'no tool call in output' };
+        const ok = call.name === 'get_order_status' && call.input.order_id === 'BK-10571';
+        return { pass: ok, score: ok ? 1 : 0, reason: JSON.stringify(call) };

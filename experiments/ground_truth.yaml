@@ -1,0 +1,170 @@
+# Ground truth for the 8 committed example traces in examples/traces/.
+#
+# How this was written: planted flaws were defined in the scenario design (demo-agent/README.md and
+# demo-agent/tools.py) before any report was generated. Only the "what_happened" text (and
+# behaviour_short) and the expected labels for scenarios that diverged from their design
+# (undo_delivered_order, return_window_from_memory, unneeded_lookup) were written after reading
+# the reports. Where a label is a judgement call it is marked ambiguous: true with a reason.
+# Scoring reports totals over all 8 scenarios and over the unambiguous ones.
+#
+# evidence_correct: false if the committed report states a fact that is false (checked against the
+# trace and demo-agent/tools.py). A report is "fully correct" only if its label is right AND
+# evidence_correct is true. "Evidence in bounds" is not stored here: score_reports.py detects
+# citations of demo-agent/ or examples/traces/ in the report text.
+#
+# Allowed values
+#   expected_failure_type: wrong_tool | wrong_arguments | missing_tool_call | unnecessary_tool_call |
+#     description_overlap | tool_error_mishandled | leaked_internals | prompt_issue | model_error |
+#     inconclusive | no_failure
+#   expected_fix_location: tool_description | tool_schema | error_message | system_prompt | none
+#   tools_involved: the tools that take part in the failure (used to count system-prompt edits
+#     suggested for a failure that involves only one tool)
+#
+# Trace IDs are the committed ones. Do not edit examples/traces or examples/reports.
+
+scenarios:
+  - scenario: search_by_title
+    trace_id: 568e32113f4afef938854f6caee45376
+    behaviour_short: "search_books, answered from result"
+    planted_flaw: none
+    what_happened: >-
+      Called search_books with the title as query, got one match (price 11.99, stock 14) and
+      answered with those exact values. It also offered to "place an order", which no tool can do.
+    expected_failure_type: no_failure
+    expected_fix_location: none
+    evidence_correct: true
+    evidence_note: "Price, stock and the observation about offering to place an order match the trace and tools.py."
+    tools_involved: [search_books]
+    ambiguous: false
+
+  - scenario: shipping_policy
+    trace_id: 361515fd899d5188fe2010adc2d56d40
+    behaviour_short: "get_store_policy, answered from result"
+    planted_flaw: none
+    what_happened: >-
+      Called get_store_policy with topic shipping and restated the policy text correctly
+      (3 to 5 business days, $4.50, free over $35, express 1 to 2 days at $12.00).
+    expected_failure_type: no_failure
+    expected_fix_location: none
+    evidence_correct: true
+    evidence_note: "Restated policy matches tools.py."
+    tools_involved: [get_store_policy]
+    ambiguous: false
+
+  - scenario: return_window_from_memory
+    trace_id: ae32154e0914ea89e0cf8e77b1e72564
+    behaviour_short: "get_store_policy, answered from result"
+    planted_flaw: none
+    what_happened: >-
+      The name says "from memory", but the agent called get_store_policy with topic returns and
+      answered from the result (30 days from delivery). No failure.
+    expected_failure_type: no_failure
+    expected_fix_location: none
+    evidence_correct: true
+    evidence_note: "Matches the trace."
+    tools_involved: [get_store_policy]
+    ambiguous: false
+
+  - scenario: undo_delivered_order
+    trace_id: 52a42ef6a07b1118928148c537b9a39d
+    behaviour_short: "start_return on a delivered order (correct action); reason \"None\"; no status check"
+    planted_flaw: description_overlap
+    what_happened: >-
+      "undo my order BK-10234". The agent called start_return directly with reason "None" (a
+      string, not a real reason) and did not call get_order_status first. BK-10234 is delivered,
+      so start_return was the correct action and it succeeded. The final answer matches the tool
+      result and the returns policy. The scenario was designed to make the model hit cancel_order
+      and fail; that did not happen.
+    expected_failure_type: no_failure
+    expected_fix_location: none
+    evidence_correct: true
+    evidence_note: "Stated facts match the trace. The suggested cancel_order text mentions a status \"paid\" that does not exist in this store; that is in a proposed rewrite, not a claim about the trace, so it is not scored."
+    tools_involved: [cancel_order, start_return]
+    ambiguous: true
+    ambiguous_reason: >-
+      The outcome was correct, so no_failure; but the agent skipped the status check (the
+      expected_tool_check score is 0) and filled reason with the string "None", which could be
+      labelled missing_tool_call or wrong_arguments (low severity).
+
+  - scenario: cancel_bare_number
+    trace_id: 4e30ecd2dd0cd2465c2fafac242f5a8c
+    behaviour_short: "cancel_order(\"10571\") rejected; told user order not found; no retry with BK-"
+    planted_flaw: order_id format not stated (schema says only "The order ID"); vague error
+    what_happened: >-
+      "Please cancel order 10571." The agent passed the bare "10571" to cancel_order, the server
+      rejected it (Invalid order_id: "10571"), and the agent told the user it "couldn't locate
+      order 10571 in our system" and asked for the correct number. It did not retry with BK-10571.
+      The order (processing, so cancellable) was not cancelled.
+    expected_failure_type: wrong_arguments
+    expected_fix_location: tool_schema
+    evidence_correct: true
+    evidence_note: "Facts match the trace and tools.py. The BK- format is inferred from other trace files, which is flagged as out of bounds instead."
+    tools_involved: [cancel_order]
+    ambiguous: true
+    ambiguous_reason: >-
+      Root cause is the missing format in the schema (wrong_arguments is the symptom, and there is
+      no type for "missing format"); tool_error_mishandled is also present (error misreported as
+      "not found"), and the vague error message is a second fix location.
+
+  - scenario: cancel_shipped_order
+    trace_id: dfd0865869ace75001ee6ce844dcb4d4
+    behaviour_short: "cancel_order refused (shipped); then offered a return label it cannot give"
+    planted_flaw: description overlap and an error that says what failed but not what to do next
+    what_happened: >-
+      "Cancel order BK-10388, I changed my mind." cancel_order was the right tool. The server
+      refused (status is shipped) and the agent reported that accurately, then offered "a return
+      shipping label". Returns open only after delivery and the agent has no tool that makes a
+      label for a shipped order, so the offer is invented.
+    expected_failure_type: tool_error_mishandled
+    expected_fix_location: error_message
+    evidence_correct: true
+    evidence_note: "Facts match the trace and tools.py."
+    tools_involved: [cancel_order, start_return]
+    ambiguous: true
+    ambiguous_reason: >-
+      The error was reported accurately and no success was claimed, so this stretches the
+      definition of tool_error_mishandled (ignored, retried badly, or claimed success); the
+      alternative is model_error (the model invented a capability).
+
+  - scenario: return_processing_order
+    trace_id: 2f3a8af0320782aaf84fbe2d7e5205c2
+    behaviour_short: "start_return refused (processing); invented a policy; no cancel_order"
+    planted_flaw: description overlap and an error that says what failed but not what to do next
+    what_happened: >-
+      "start a return" on BK-10571 (processing). start_return was the literal match for the
+      request and it errored (not eligible, status is processing). The agent then quoted a store
+      policy it never looked up ("shipped or delivered"; the real policy says delivered only),
+      did not offer cancel_order, which is what works for a processing order, and sent the
+      customer to support.
+    expected_failure_type: tool_error_mishandled
+    expected_fix_location: error_message
+    evidence_correct: true
+    evidence_note: "Facts match the trace and tools.py."
+    tools_involved: [cancel_order, start_return]
+    ambiguous: true
+    ambiguous_reason: >-
+      Same stretch as cancel_shipped_order (an invented policy after an accurately reported
+      error); model_error is the alternative. description_overlap is a plausible second finding
+      but did not cause a wrong pick, because the user named the tool.
+
+  - scenario: unneeded_lookup
+    trace_id: d16c62931b297a2bcd47834deb76a519
+    behaviour_short: "search_books(\"Dune by Frank Herbert\") returned 0; said it found nothing about Dune"
+    planted_flaw: none (the scenario only tests whether the model calls a tool it does not need)
+    what_happened: >-
+      "Is Dune by Frank Herbert a good book for a 14 year old?" The agent called search_books
+      with query "Dune by Frank Herbert". That returned 0 results, because search_books matches
+      the query as a substring of the title or of the author, never of both together, even though
+      Dune is in the catalog (stock 22). The agent then opened with "I couldn't find any
+      information on a book called "Dune"", which is false, and gave a general answer.
+    expected_failure_type: unnecessary_tool_call
+    expected_fix_location: tool_description
+    evidence_correct: false
+    evidence_note: "The report says the empty result means the store does not list the book. Dune is in the catalog (tools.py, stock 22); search_books missed it because it cannot match title and author together. See experiments/discovered_bugs.md."
+    tools_involved: [search_books]
+    ambiguous: true
+    ambiguous_reason: >-
+      The call was unnecessary for a suitability question, but the user-visible damage came from
+      a query the tool could not match (title and author together), which also fits
+      wrong_arguments (schema or description: one title, author or ISBN per query) or a server
+      behaviour fix.

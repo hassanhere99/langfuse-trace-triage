@@ -1,0 +1,526 @@
+{
+  "id": "cb4b44236edf1e609ca4e2403d03ea67",
+  "timestamp": "2026-11-26T18:52:20.476Z",
+  "name": "bookstore-support",
+  "input": "Cancel order BK-10388, I changed my mind.",
+  "output": "I apologize for the inconvenience, but unfortunately, your order BK-10388 has shipped and cannot be cancelled. However, you can initiate a return by contacting our customer service team. We'll be happy to assist you with the return process once the item has been delivered. Please let us know how to proceed with the return, and we'll guide you through the next steps.",
+  "metadata": {
+    "temperature": 0,
+    "run": 2,
+    "experiment": "before-after-2026-11",
+    "agent_variant": "fixed",
+    "scenario_id": "cancel_shipped_order"
+  },
+  "tags": [],
+  "sessionId": null,
+  "environment": "default",
+  "observations": [
+    {
+      "id": "93f6b93474307779",
+      "traceId": "cb4b44236edf1e609ca4e2403d03ea67",
+      "startTime": "2026-11-26T18:52:20.476Z",
+      "endTime": "2026-11-26T18:52:26.448Z",
+      "parentObservationId": "1fe74808b02e3c32",
+      "type": "GENERATION",
+      "name": "llm-call-1",
+      "level": "DEFAULT",
+      "statusMessage": "",
+      "environment": "default",
+      "completionStartTime": null,
+      "createdAt": "2026-11-26T18:52:29.258Z",
+      "updatedAt": "2026-11-26T18:52:29.258Z",
+      "input": {
+        "messages": [
+          {
+            "role": "system",
+            "content": "You are a customer support assistant for an online bookstore. Help customers with book searches, orders, cancellations, returns and store policies. Be concise and polite."
+          },
+          {
+            "role": "user",
+            "content": "Cancel order BK-10388, I changed my mind."
+          }
+        ],
+        "tools": [
+          {
+            "type": "function",
+            "function": {
+              "name": "search_books",
+              "description": "Search the bookstore catalog by title, author or ISBN. Returns up to five matching books with ISBN, title, author, price in USD and the number of copies in stock.",
+              "parameters": {
+                "type": "object",
+                "properties": {
+                  "query": {
+                    "type": "string",
+                    "description": "A title, author name or ISBN to search for."
+                  }
+                },
+                "required": [
+                  "query"
+                ]
+              }
+            }
+          },
+          {
+            "type": "function",
+            "function": {
+              "name": "get_order_status",
+              "description": "Look up an order and return its status, items and key dates.",
+              "parameters": {
+                "type": "object",
+                "properties": {
+                  "order_id": {
+                    "type": "string",
+                    "description": "The order ID. Format: BK- followed by 5 digits, e.g. BK-10571."
+                  }
+                },
+                "required": [
+                  "order_id"
+                ]
+              }
+            }
+          },
+          {
+            "type": "function",
+            "function": {
+              "name": "cancel_order",
+              "description": "Undo an order. Use this when the customer wants to reverse or back out of an order they placed.",
+              "parameters": {
+                "type": "object",
+                "properties": {
+                  "order_id": {
+                    "type": "string",
+                    "description": "The order ID. Format: BK- followed by 5 digits, e.g. BK-10571."
+                  }
+                },
+                "required": [
+                  "order_id"
+                ]
+              }
+            }
+          },
+          {
+            "type": "function",
+            "function": {
+              "name": "start_return",
+              "description": "Reverse an order. Use this when the customer wants to undo a purchase and get their money back.",
+              "parameters": {
+                "type": "object",
+                "properties": {
+                  "order_id": {
+                    "type": "string",
+                    "description": "The order ID. Format: BK- followed by 5 digits, e.g. BK-10571."
+                  },
+                  "reason": {
+                    "type": "string",
+                    "description": "Why the customer wants to return the order."
+                  }
+                },
+                "required": [
+                  "order_id"
+                ]
+              }
+            }
+          },
+          {
+            "type": "function",
+            "function": {
+              "name": "get_store_policy",
+              "description": "Return the official store policy text for one topic: returns, shipping or cancellations. Use it for questions about how the store's rules work rather than about a specific order.",
+              "parameters": {
+                "type": "object",
+                "properties": {
+                  "topic": {
+                    "type": "string",
+                    "enum": [
+                      "returns",
+                      "shipping",
+                      "cancellations"
+                    ],
+                    "description": "The policy topic to look up."
+                  }
+                },
+                "required": [
+                  "topic"
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "output": {
+        "role": "assistant",
+        "content": "",
+        "tool_calls": [
+          {
+            "id": "call_wn4miay7",
+            "type": "function",
+            "function": {
+              "name": "cancel_order",
+              "arguments": "{\"order_id\":\"BK-10388\"}"
+            }
+          }
+        ]
+      },
+      "metadata": {
+        "temperature": 0,
+        "run": 2,
+        "experiment": "before-after-2026-11",
+        "agent_variant": "fixed",
+        "scenario_id": "cancel_shipped_order",
+        "finish_reason": "tool_calls"
+      },
+      "model": "llama3.2:3b",
+      "internalModelId": "",
+      "modelParameters": {
+        "temperature": 0,
+        "max_tokens": 4096
+      },
+      "usageDetails": {
+        "input": 581,
+        "output": 17,
+        "total": 598
+      },
+      "inputUsage": 581,
+      "outputUsage": 17,
+      "totalUsage": 598,
+      "costDetails": {},
+      "inputCost": null,
+      "outputCost": null,
+      "totalCost": null,
+      "usagePricingTierId": null,
+      "usagePricingTierName": null,
+      "latency": 5.972,
+      "timeToFirstToken": null,
+      "sessionId": "",
+      "isRootObservation": false,
+      "traceName": "bookstore-support",
+      "tags": [],
+      "bookmarked": false,
+      "public": false,
+      "modelId": null,
+      "inputPrice": null,
+      "outputPrice": null,
+      "totalPrice": null
+    },
+    {
+      "id": "1fe74808b02e3c32",
+      "traceId": "cb4b44236edf1e609ca4e2403d03ea67",
+      "startTime": "2026-11-26T18:52:20.476Z",
+      "endTime": "2026-11-26T18:52:32.903Z",
+      "parentObservationId": null,
+      "type": "SPAN",
+      "name": "agent-run",
+      "level": "DEFAULT",
+      "statusMessage": "",
+      "environment": "default",
+      "completionStartTime": null,
+      "createdAt": "2026-11-26T18:52:33.595Z",
+      "updatedAt": "2026-11-26T18:52:33.595Z",
+      "input": "Cancel order BK-10388, I changed my mind.",
+      "output": "I apologize for the inconvenience, but unfortunately, your order BK-10388 has shipped and cannot be cancelled. However, you can initiate a return by contacting our customer service team. We'll be happy to assist you with the return process once the item has been delivered. Please let us know how to proceed with the return, and we'll guide you through the next steps.",
+      "metadata": {
+        "temperature": 0,
+        "run": 2,
+        "experiment": "before-after-2026-11",
+        "agent_variant": "fixed",
+        "scenario_id": "cancel_shipped_order"
+      },
+      "model": "",
+      "internalModelId": "",
+      "modelParameters": {},
+      "usageDetails": {},
+      "inputUsage": 0,
+      "outputUsage": 0,
+      "totalUsage": 0,
+      "costDetails": {},
+      "inputCost": null,
+      "outputCost": null,
+      "totalCost": null,
+      "usagePricingTierId": null,
+      "usagePricingTierName": null,
+      "latency": 12.427,
+      "timeToFirstToken": null,
+      "sessionId": "",
+      "isRootObservation": true,
+      "traceName": "bookstore-support",
+      "tags": [],
+      "bookmarked": false,
+      "public": false,
+      "modelId": null,
+      "inputPrice": null,
+      "outputPrice": null,
+      "totalPrice": null
+    },
+    {
+      "id": "802aa6949e721ccb",
+      "traceId": "cb4b44236edf1e609ca4e2403d03ea67",
+      "startTime": "2026-11-26T18:52:26.448Z",
+      "endTime": "2026-11-26T18:52:26.448Z",
+      "parentObservationId": "1fe74808b02e3c32",
+      "type": "TOOL",
+      "name": "tool:cancel_order",
+      "level": "ERROR",
+      "statusMessage": "Order BK-10388 has shipped, so it can't be cancelled. A return can be started once it has been delivered.",
+      "environment": "default",
+      "completionStartTime": null,
+      "createdAt": "2026-11-26T18:52:29.258Z",
+      "updatedAt": "2026-11-26T18:52:29.258Z",
+      "input": {
+        "order_id": "BK-10388"
+      },
+      "output": {
+        "error": "Order BK-10388 has shipped, so it can't be cancelled. A return can be started once it has been delivered."
+      },
+      "metadata": {
+        "temperature": 0,
+        "run": 2,
+        "experiment": "before-after-2026-11",
+        "agent_variant": "fixed",
+        "scenario_id": "cancel_shipped_order"
+      },
+      "model": "",
+      "internalModelId": "",
+      "modelParameters": {},
+      "usageDetails": {},
+      "inputUsage": 0,
+      "outputUsage": 0,
+      "totalUsage": 0,
+      "costDetails": {},
+      "inputCost": null,
+      "outputCost": null,
+      "totalCost": null,
+      "usagePricingTierId": null,
+      "usagePricingTierName": null,
+      "latency": 0,
+      "timeToFirstToken": null,
+      "sessionId": "",
+      "isRootObservation": false,
+      "traceName": "bookstore-support",
+      "tags": [],
+      "bookmarked": false,
+      "public": false,
+      "modelId": null,
+      "inputPrice": null,
+      "outputPrice": null,
+      "totalPrice": null
+    },
+    {
+      "id": "09c9b267448e800f",
+      "traceId": "cb4b44236edf1e609ca4e2403d03ea67",
+      "startTime": "2026-11-26T18:52:26.449Z",
+      "endTime": "2026-11-26T18:52:32.903Z",
+      "parentObservationId": "1fe74808b02e3c32",
+      "type": "GENERATION",
+      "name": "llm-call-2",
+      "level": "DEFAULT",
+      "statusMessage": "",
+      "environment": "default",
+      "completionStartTime": null,
+      "createdAt": "2026-11-26T18:52:33.595Z",
+      "updatedAt": "2026-11-26T18:52:33.595Z",
+      "input": {
+        "messages": [
+          {
+            "role": "system",
+            "content": "You are a customer support assistant for an online bookstore. Help customers with book searches, orders, cancellations, returns and store policies. Be concise and polite."
+          },
+          {
+            "role": "user",
+            "content": "Cancel order BK-10388, I changed my mind."
+          },
+          {
+            "role": "assistant",
+            "content": "",
+            "tool_calls": [
+              {
+                "id": "call_wn4miay7",
+                "type": "function",
+                "function": {
+                  "name": "cancel_order",
+                  "arguments": "{\"order_id\":\"BK-10388\"}"
+                }
+              }
+            ]
+          },
+          {
+            "role": "tool",
+            "tool_call_id": "call_wn4miay7",
+            "content": "{\"error\": \"Order BK-10388 has shipped, so it can't be cancelled. A return can be started once it has been delivered.\"}"
+          }
+        ],
+        "tools": [
+          {
+            "type": "function",
+            "function": {
+              "name": "search_books",
+              "description": "Search the bookstore catalog by title, author or ISBN. Returns up to five matching books with ISBN, title, author, price in USD and the number of copies in stock.",
+              "parameters": {
+                "type": "object",
+                "properties": {
+                  "query": {
+                    "type": "string",
+                    "description": "A title, author name or ISBN to search for."
+                  }
+                },
+                "required": [
+                  "query"
+                ]
+              }
+            }
+          },
+          {
+            "type": "function",
+            "function": {
+              "name": "get_order_status",
+              "description": "Look up an order and return its status, items and key dates.",
+              "parameters": {
+                "type": "object",
+                "properties": {
+                  "order_id": {
+                    "type": "string",
+                    "description": "The order ID. Format: BK- followed by 5 digits, e.g. BK-10571."
+                  }
+                },
+                "required": [
+                  "order_id"
+                ]
+              }
+            }
+          },
+          {
+            "type": "function",
+            "function": {
+              "name": "cancel_order",
+              "description": "Undo an order. Use this when the customer wants to reverse or back out of an order they placed.",
+              "parameters": {
+                "type": "object",
+                "properties": {
+                  "order_id": {
+                    "type": "string",
+                    "description": "The order ID. Format: BK- followed by 5 digits, e.g. BK-10571."
+                  }
+                },
+                "required": [
+                  "order_id"
+                ]
+              }
+            }
+          },
+          {
+            "type": "function",
+            "function": {
+              "name": "start_return",
+              "description": "Reverse an order. Use this when the customer wants to undo a purchase and get their money back.",
+              "parameters": {
+                "type": "object",
+                "properties": {
+                  "order_id": {
+                    "type": "string",
+                    "description": "The order ID. Format: BK- followed by 5 digits, e.g. BK-10571."
+                  },
+                  "reason": {
+                    "type": "string",
+                    "description": "Why the customer wants to return the order."
+                  }
+                },
+                "required": [
+                  "order_id"
+                ]
+              }
+            }
+          },
+          {
+            "type": "function",
+            "function": {
+              "name": "get_store_policy",
+              "description": "Return the official store policy text for one topic: returns, shipping or cancellations. Use it for questions about how the store's rules work rather than about a specific order.",
+              "parameters": {
+                "type": "object",
+                "properties": {
+                  "topic": {
+                    "type": "string",
+                    "enum": [
+                      "returns",
+                      "shipping",
+                      "cancellations"
+                    ],
+                    "description": "The policy topic to look up."
+                  }
+                },
+                "required": [
+                  "topic"
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "output": {
+        "role": "assistant",
+        "content": "I apologize for the inconvenience, but unfortunately, your order BK-10388 has shipped and cannot be cancelled. However, you can initiate a return by contacting our customer service team. We'll be happy to assist you with the return process once the item has been delivered. Please let us know how to proceed with the return, and we'll guide you through the next steps."
+      },
+      "metadata": {
+        "temperature": 0,
+        "run": 2,
+        "experiment": "before-after-2026-11",
+        "agent_variant": "fixed",
+        "scenario_id": "cancel_shipped_order",
+        "finish_reason": "stop"
+      },
+      "model": "llama3.2:3b",
+      "internalModelId": "",
+      "modelParameters": {
+        "temperature": 0,
+        "max_tokens": 4096
+      },
+      "usageDetails": {
+        "input": 161,
+        "output": 76,
+        "total": 237
+      },
+      "inputUsage": 161,
+      "outputUsage": 76,
+      "totalUsage": 237,
+      "costDetails": {},
+      "inputCost": null,
+      "outputCost": null,
+      "totalCost": null,
+      "usagePricingTierId": null,
+      "usagePricingTierName": null,
+      "latency": 6.454,
+      "timeToFirstToken": null,
+      "sessionId": "",
+      "isRootObservation": false,
+      "traceName": "bookstore-support",
+      "tags": [],
+      "bookmarked": false,
+      "public": false,
+      "modelId": null,
+      "inputPrice": null,
+      "outputPrice": null,
+      "totalPrice": null
+    }
+  ],
+  "scores": [
+    {
+      "id": "5ae2f76ec17a0335",
+      "name": "expected_tool_check",
+      "source": "API",
+      "timestamp": "2026-11-26T18:52:32.903Z",
+      "environment": "default",
+      "createdAt": "2026-11-26T18:52:36.000Z",
+      "updatedAt": "2026-11-26T18:52:35.178Z",
+      "comment": "automated check by run_demo.py: expected first tool cancel_order, got cancel_order",
+      "configId": null,
+      "metadata": {},
+      "subject": {
+        "kind": "trace",
+        "id": "cb4b44236edf1e609ca4e2403d03ea67"
+      },
+      "dataType": "NUMERIC",
+      "value": 1,
+      "traceId": "cb4b44236edf1e609ca4e2403d03ea67"
+    }
+  ],
+  "reconstructedFrom": "GET /api/public/v2/observations (no trace-level fields in v2; name/input/output/metadata taken from the root observation)"
+}

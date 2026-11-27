@@ -1,0 +1,527 @@
+{
+  "id": "212c4d2ccd2ce3991d3c5a177099f5e3",
+  "timestamp": "2026-11-26T18:50:04.898Z",
+  "name": "bookstore-support",
+  "input": "How long does standard shipping take and what does it cost?",
+  "output": "Our standard shipping typically takes 3 to 5 business days and costs $4.50. Orders over $35 ship free. If you need your order faster, our express shipping option takes 1 to 2 business days and costs $12.00. We only ship within the United States.",
+  "metadata": {
+    "temperature": 0,
+    "run": 2,
+    "experiment": "before-after-2026-11",
+    "agent_variant": "fixed",
+    "scenario_id": "shipping_policy"
+  },
+  "tags": [],
+  "sessionId": null,
+  "environment": "default",
+  "observations": [
+    {
+      "id": "826a6c581eee1f43",
+      "traceId": "212c4d2ccd2ce3991d3c5a177099f5e3",
+      "startTime": "2026-11-26T18:50:04.898Z",
+      "endTime": "2026-11-26T18:50:11.148Z",
+      "parentObservationId": "5cd510f67f9eaa26",
+      "type": "GENERATION",
+      "name": "llm-call-1",
+      "level": "DEFAULT",
+      "statusMessage": "",
+      "environment": "default",
+      "completionStartTime": null,
+      "createdAt": "2026-11-26T18:50:15.574Z",
+      "updatedAt": "2026-11-26T18:50:15.574Z",
+      "input": {
+        "messages": [
+          {
+            "role": "system",
+            "content": "You are a customer support assistant for an online bookstore. Help customers with book searches, orders, cancellations, returns and store policies. Be concise and polite."
+          },
+          {
+            "role": "user",
+            "content": "How long does standard shipping take and what does it cost?"
+          }
+        ],
+        "tools": [
+          {
+            "type": "function",
+            "function": {
+              "name": "search_books",
+              "description": "Search the bookstore catalog by title, author or ISBN. Returns up to five matching books with ISBN, title, author, price in USD and the number of copies in stock.",
+              "parameters": {
+                "type": "object",
+                "properties": {
+                  "query": {
+                    "type": "string",
+                    "description": "A title, author name or ISBN to search for."
+                  }
+                },
+                "required": [
+                  "query"
+                ]
+              }
+            }
+          },
+          {
+            "type": "function",
+            "function": {
+              "name": "get_order_status",
+              "description": "Look up an order and return its status, items and key dates.",
+              "parameters": {
+                "type": "object",
+                "properties": {
+                  "order_id": {
+                    "type": "string",
+                    "description": "The order ID. Format: BK- followed by 5 digits, e.g. BK-10571."
+                  }
+                },
+                "required": [
+                  "order_id"
+                ]
+              }
+            }
+          },
+          {
+            "type": "function",
+            "function": {
+              "name": "cancel_order",
+              "description": "Undo an order. Use this when the customer wants to reverse or back out of an order they placed.",
+              "parameters": {
+                "type": "object",
+                "properties": {
+                  "order_id": {
+                    "type": "string",
+                    "description": "The order ID. Format: BK- followed by 5 digits, e.g. BK-10571."
+                  }
+                },
+                "required": [
+                  "order_id"
+                ]
+              }
+            }
+          },
+          {
+            "type": "function",
+            "function": {
+              "name": "start_return",
+              "description": "Reverse an order. Use this when the customer wants to undo a purchase and get their money back.",
+              "parameters": {
+                "type": "object",
+                "properties": {
+                  "order_id": {
+                    "type": "string",
+                    "description": "The order ID. Format: BK- followed by 5 digits, e.g. BK-10571."
+                  },
+                  "reason": {
+                    "type": "string",
+                    "description": "Why the customer wants to return the order."
+                  }
+                },
+                "required": [
+                  "order_id"
+                ]
+              }
+            }
+          },
+          {
+            "type": "function",
+            "function": {
+              "name": "get_store_policy",
+              "description": "Return the official store policy text for one topic: returns, shipping or cancellations. Use it for questions about how the store's rules work rather than about a specific order.",
+              "parameters": {
+                "type": "object",
+                "properties": {
+                  "topic": {
+                    "type": "string",
+                    "enum": [
+                      "returns",
+                      "shipping",
+                      "cancellations"
+                    ],
+                    "description": "The policy topic to look up."
+                  }
+                },
+                "required": [
+                  "topic"
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "output": {
+        "role": "assistant",
+        "content": "",
+        "tool_calls": [
+          {
+            "id": "call_y5zyiho6",
+            "type": "function",
+            "function": {
+              "name": "get_store_policy",
+              "arguments": "{\"topic\":\"shipping\"}"
+            }
+          }
+        ]
+      },
+      "metadata": {
+        "temperature": 0,
+        "run": 2,
+        "experiment": "before-after-2026-11",
+        "agent_variant": "fixed",
+        "scenario_id": "shipping_policy",
+        "finish_reason": "tool_calls"
+      },
+      "model": "llama3.2:3b",
+      "internalModelId": "",
+      "modelParameters": {
+        "temperature": 0,
+        "max_tokens": 4096
+      },
+      "usageDetails": {
+        "input": 581,
+        "output": 14,
+        "total": 595
+      },
+      "inputUsage": 581,
+      "outputUsage": 14,
+      "totalUsage": 595,
+      "costDetails": {},
+      "inputCost": null,
+      "outputCost": null,
+      "totalCost": null,
+      "usagePricingTierId": null,
+      "usagePricingTierName": null,
+      "latency": 6.25,
+      "timeToFirstToken": null,
+      "sessionId": "",
+      "isRootObservation": false,
+      "traceName": "bookstore-support",
+      "tags": [],
+      "bookmarked": false,
+      "public": false,
+      "modelId": null,
+      "inputPrice": null,
+      "outputPrice": null,
+      "totalPrice": null
+    },
+    {
+      "id": "5cd510f67f9eaa26",
+      "traceId": "212c4d2ccd2ce3991d3c5a177099f5e3",
+      "startTime": "2026-11-26T18:50:04.898Z",
+      "endTime": "2026-11-26T18:50:16.517Z",
+      "parentObservationId": null,
+      "type": "SPAN",
+      "name": "agent-run",
+      "level": "DEFAULT",
+      "statusMessage": "",
+      "environment": "default",
+      "completionStartTime": null,
+      "createdAt": "2026-11-26T18:50:17.236Z",
+      "updatedAt": "2026-11-26T18:50:17.236Z",
+      "input": "How long does standard shipping take and what does it cost?",
+      "output": "Our standard shipping typically takes 3 to 5 business days and costs $4.50. Orders over $35 ship free. If you need your order faster, our express shipping option takes 1 to 2 business days and costs $12.00. We only ship within the United States.",
+      "metadata": {
+        "temperature": 0,
+        "run": 2,
+        "experiment": "before-after-2026-11",
+        "agent_variant": "fixed",
+        "scenario_id": "shipping_policy"
+      },
+      "model": "",
+      "internalModelId": "",
+      "modelParameters": {},
+      "usageDetails": {},
+      "inputUsage": 0,
+      "outputUsage": 0,
+      "totalUsage": 0,
+      "costDetails": {},
+      "inputCost": null,
+      "outputCost": null,
+      "totalCost": null,
+      "usagePricingTierId": null,
+      "usagePricingTierName": null,
+      "latency": 11.619,
+      "timeToFirstToken": null,
+      "sessionId": "",
+      "isRootObservation": true,
+      "traceName": "bookstore-support",
+      "tags": [],
+      "bookmarked": false,
+      "public": false,
+      "modelId": null,
+      "inputPrice": null,
+      "outputPrice": null,
+      "totalPrice": null
+    },
+    {
+      "id": "dfb75336ca84c8bc",
+      "traceId": "212c4d2ccd2ce3991d3c5a177099f5e3",
+      "startTime": "2026-11-26T18:50:11.148Z",
+      "endTime": "2026-11-26T18:50:16.517Z",
+      "parentObservationId": "5cd510f67f9eaa26",
+      "type": "GENERATION",
+      "name": "llm-call-2",
+      "level": "DEFAULT",
+      "statusMessage": "",
+      "environment": "default",
+      "completionStartTime": null,
+      "createdAt": "2026-11-26T18:50:17.236Z",
+      "updatedAt": "2026-11-26T18:50:17.236Z",
+      "input": {
+        "messages": [
+          {
+            "role": "system",
+            "content": "You are a customer support assistant for an online bookstore. Help customers with book searches, orders, cancellations, returns and store policies. Be concise and polite."
+          },
+          {
+            "role": "user",
+            "content": "How long does standard shipping take and what does it cost?"
+          },
+          {
+            "role": "assistant",
+            "content": "",
+            "tool_calls": [
+              {
+                "id": "call_y5zyiho6",
+                "type": "function",
+                "function": {
+                  "name": "get_store_policy",
+                  "arguments": "{\"topic\":\"shipping\"}"
+                }
+              }
+            ]
+          },
+          {
+            "role": "tool",
+            "tool_call_id": "call_y5zyiho6",
+            "content": "{\"topic\": \"shipping\", \"policy\": \"Standard shipping takes 3 to 5 business days and costs $4.50. Orders over $35 ship free. Express shipping takes 1 to 2 business days and costs $12.00. We ship within the United States only.\"}"
+          }
+        ],
+        "tools": [
+          {
+            "type": "function",
+            "function": {
+              "name": "search_books",
+              "description": "Search the bookstore catalog by title, author or ISBN. Returns up to five matching books with ISBN, title, author, price in USD and the number of copies in stock.",
+              "parameters": {
+                "type": "object",
+                "properties": {
+                  "query": {
+                    "type": "string",
+                    "description": "A title, author name or ISBN to search for."
+                  }
+                },
+                "required": [
+                  "query"
+                ]
+              }
+            }
+          },
+          {
+            "type": "function",
+            "function": {
+              "name": "get_order_status",
+              "description": "Look up an order and return its status, items and key dates.",
+              "parameters": {
+                "type": "object",
+                "properties": {
+                  "order_id": {
+                    "type": "string",
+                    "description": "The order ID. Format: BK- followed by 5 digits, e.g. BK-10571."
+                  }
+                },
+                "required": [
+                  "order_id"
+                ]
+              }
+            }
+          },
+          {
+            "type": "function",
+            "function": {
+              "name": "cancel_order",
+              "description": "Undo an order. Use this when the customer wants to reverse or back out of an order they placed.",
+              "parameters": {
+                "type": "object",
+                "properties": {
+                  "order_id": {
+                    "type": "string",
+                    "description": "The order ID. Format: BK- followed by 5 digits, e.g. BK-10571."
+                  }
+                },
+                "required": [
+                  "order_id"
+                ]
+              }
+            }
+          },
+          {
+            "type": "function",
+            "function": {
+              "name": "start_return",
+              "description": "Reverse an order. Use this when the customer wants to undo a purchase and get their money back.",
+              "parameters": {
+                "type": "object",
+                "properties": {
+                  "order_id": {
+                    "type": "string",
+                    "description": "The order ID. Format: BK- followed by 5 digits, e.g. BK-10571."
+                  },
+                  "reason": {
+                    "type": "string",
+                    "description": "Why the customer wants to return the order."
+                  }
+                },
+                "required": [
+                  "order_id"
+                ]
+              }
+            }
+          },
+          {
+            "type": "function",
+            "function": {
+              "name": "get_store_policy",
+              "description": "Return the official store policy text for one topic: returns, shipping or cancellations. Use it for questions about how the store's rules work rather than about a specific order.",
+              "parameters": {
+                "type": "object",
+                "properties": {
+                  "topic": {
+                    "type": "string",
+                    "enum": [
+                      "returns",
+                      "shipping",
+                      "cancellations"
+                    ],
+                    "description": "The policy topic to look up."
+                  }
+                },
+                "required": [
+                  "topic"
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "output": {
+        "role": "assistant",
+        "content": "Our standard shipping typically takes 3 to 5 business days and costs $4.50. Orders over $35 ship free. If you need your order faster, our express shipping option takes 1 to 2 business days and costs $12.00. We only ship within the United States."
+      },
+      "metadata": {
+        "temperature": 0,
+        "run": 2,
+        "experiment": "before-after-2026-11",
+        "agent_variant": "fixed",
+        "scenario_id": "shipping_policy",
+        "finish_reason": "stop"
+      },
+      "model": "llama3.2:3b",
+      "internalModelId": "",
+      "modelParameters": {
+        "temperature": 0,
+        "max_tokens": 4096
+      },
+      "usageDetails": {
+        "input": 187,
+        "output": 61,
+        "total": 248
+      },
+      "inputUsage": 187,
+      "outputUsage": 61,
+      "totalUsage": 248,
+      "costDetails": {},
+      "inputCost": null,
+      "outputCost": null,
+      "totalCost": null,
+      "usagePricingTierId": null,
+      "usagePricingTierName": null,
+      "latency": 5.369,
+      "timeToFirstToken": null,
+      "sessionId": "",
+      "isRootObservation": false,
+      "traceName": "bookstore-support",
+      "tags": [],
+      "bookmarked": false,
+      "public": false,
+      "modelId": null,
+      "inputPrice": null,
+      "outputPrice": null,
+      "totalPrice": null
+    },
+    {
+      "id": "5fe9c89415d526de",
+      "traceId": "212c4d2ccd2ce3991d3c5a177099f5e3",
+      "startTime": "2026-11-26T18:50:11.148Z",
+      "endTime": "2026-11-26T18:50:11.148Z",
+      "parentObservationId": "5cd510f67f9eaa26",
+      "type": "TOOL",
+      "name": "tool:get_store_policy",
+      "level": "DEFAULT",
+      "statusMessage": "",
+      "environment": "default",
+      "completionStartTime": null,
+      "createdAt": "2026-11-26T18:50:15.574Z",
+      "updatedAt": "2026-11-26T18:50:15.574Z",
+      "input": {
+        "topic": "shipping"
+      },
+      "output": {
+        "topic": "shipping",
+        "policy": "Standard shipping takes 3 to 5 business days and costs $4.50. Orders over $35 ship free. Express shipping takes 1 to 2 business days and costs $12.00. We ship within the United States only."
+      },
+      "metadata": {
+        "temperature": 0,
+        "run": 2,
+        "experiment": "before-after-2026-11",
+        "agent_variant": "fixed",
+        "scenario_id": "shipping_policy"
+      },
+      "model": "",
+      "internalModelId": "",
+      "modelParameters": {},
+      "usageDetails": {},
+      "inputUsage": 0,
+      "outputUsage": 0,
+      "totalUsage": 0,
+      "costDetails": {},
+      "inputCost": null,
+      "outputCost": null,
+      "totalCost": null,
+      "usagePricingTierId": null,
+      "usagePricingTierName": null,
+      "latency": 0,
+      "timeToFirstToken": null,
+      "sessionId": "",
+      "isRootObservation": false,
+      "traceName": "bookstore-support",
+      "tags": [],
+      "bookmarked": false,
+      "public": false,
+      "modelId": null,
+      "inputPrice": null,
+      "outputPrice": null,
+      "totalPrice": null
+    }
+  ],
+  "scores": [
+    {
+      "id": "61986b589a67d9ea",
+      "name": "expected_tool_check",
+      "source": "API",
+      "timestamp": "2026-11-26T18:50:16.517Z",
+      "environment": "default",
+      "createdAt": "2026-11-26T18:50:19.000Z",
+      "updatedAt": "2026-11-26T18:50:18.704Z",
+      "comment": "automated check by run_demo.py: expected first tool get_store_policy, got get_store_policy",
+      "configId": null,
+      "metadata": {},
+      "subject": {
+        "kind": "trace",
+        "id": "212c4d2ccd2ce3991d3c5a177099f5e3"
+      },
+      "dataType": "NUMERIC",
+      "value": 1,
+      "traceId": "212c4d2ccd2ce3991d3c5a177099f5e3"
+    }
+  ],
+  "reconstructedFrom": "GET /api/public/v2/observations (no trace-level fields in v2; name/input/output/metadata taken from the root observation)"
+}

@@ -49,9 +49,11 @@ def main():
     # Show where the traces will go before sending anything.
     from check_langfuse_project import describe, get_projects
     print(describe(*get_projects()))
-    print(f"Model: {os.environ['DEMO_MODEL']} at {os.environ['OPENAI_BASE_URL']}\n")
-
     import tools as bookstore
+    variant = bookstore.resolve_variant()
+    print(f"Model: {os.environ['DEMO_MODEL']} at {os.environ['OPENAI_BASE_URL']}")
+    print(f"Agent variant: {variant}\n")
+
     from agent import run_turn
     from langfuse import get_client
 
@@ -61,7 +63,7 @@ def main():
     for scenario_id, message, expected in SCENARIOS:
         bookstore.reset_state()
         try:
-            result = run_turn(message, scenario_id, model=model)
+            result = run_turn(message, scenario_id, model=model, variant=variant)
         except Exception as exc:
             print(f"{scenario_id}: failed: {type(exc).__name__}: {exc}", file=sys.stderr)
             continue
@@ -85,6 +87,7 @@ def main():
     out = {
         "run_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "model": model,
+        "agent_variant": variant,
         "base_url": os.environ["OPENAI_BASE_URL"],
         "traces": [{"scenario_id": sid, "trace_id": tid} for sid, tid, _, _ in rows],
     }

@@ -1,8 +1,21 @@
 """Fake in-memory bookstore backend and the tool definitions the demo agent exposes.
 
 The tools are flawed on purpose, so the demo agent produces real failures for the
-triage skill to find. Do not "fix" these without updating demo-agent/README.md and
+triage skill to find. The flawed behaviour is the default and must stay reproducible: it is
+what examples/ was generated from. Do not edit it without updating demo-agent/README.md and
 regenerating examples/promptfoo/tools.json.
+
+Variants (AGENT_VARIANT=flawed|fixed|desc_only|errors_only, default flawed)
+    flawed       the tools exactly as the committed examples were generated.
+    fixed        two changes, nothing else:
+                 1. the order_id description of every tool that takes one states the format
+                    (BK- followed by 5 digits, e.g. BK-10571);
+                 2. error messages say what to do next, not only what failed.
+    desc_only    change 1 only, with the flawed error messages.
+    errors_only  change 2 only, with the flawed order_id description.
+    The cancel_order / start_return description overlap (flaw a) is NOT fixed in any variant. It
+    is the control of the experiment. The search_books matching limitation is not fixed either
+    (see experiments/discovered_bugs.md).
 
 Deliberate flaws:
 
@@ -21,10 +34,13 @@ Server behaviour that makes the flaws visible:
 
 Usage:
     python demo-agent/tools.py --dump-tools > examples/promptfoo/tools.json
+    python demo-agent/tools.py --dump-tools --variant fixed|desc_only|errors_only
 """
 from __future__ import annotations
 
+import copy
 import json
+import os
 import re
 import sys
 
@@ -139,6 +155,40 @@ TOOLS = [
     ),
 ]
 
+# --- Variants ---------------------------------------------------------------------------
+
+# variant -> (fix 1: order_id description, fix 2: error messages)
+_VARIANT_FIXES = {
+    "flawed": (False, False),
+    "fixed": (True, True),
+    "desc_only": (True, False),
+    "errors_only": (False, True),
+}
+VARIANTS = tuple(_VARIANT_FIXES)
+ORDER_ID_FIXED = "The order ID. Format: BK- followed by 5 digits, e.g. BK-10571."
+
+
+def resolve_variant(value=None):
+    """The variant to use: the argument, else AGENT_VARIANT from the environment, else flawed."""
+    raw = value if value is not None else os.environ.get("AGENT_VARIANT")
+    variant = (raw or "flawed").strip().lower()
+    if variant not in VARIANTS:
+        raise ValueError(f"AGENT_VARIANT must be one of {', '.join(VARIANTS)}, got {raw!r}")
+    return variant
+
+
+def tools_for(variant=None):
+    """Tool definitions for a variant. Without fix 1 this is TOOLS itself; otherwise a modified copy."""
+    if not _VARIANT_FIXES[resolve_variant(variant)][0]:
+        return TOOLS
+    fixed = copy.deepcopy(TOOLS)
+    for tool in fixed:
+        props = tool["function"]["parameters"]["properties"]
+        if "order_id" in props:
+            props["order_id"]["description"] = ORDER_ID_FIXED
+    return fixed
+
+
 # --- Implementations --------------------------------------------------------------------
 
 _ORDER_ID_RE = re.compile(r"^BK-\d+$")
@@ -148,50 +198,80 @@ def _err(message):
     return {"error": message}, True
 
 
-def _find_order(args):
+# In the implementations below, `fixed` means "fix 2 is on": errors say what to do next.
+def _find_order(args, fixed):
     order_id = args.get("order_id")
     if not isinstance(order_id, str) or not order_id:
-        return None, _err("Missing required argument: order_id")
+        msg = "Missing required argument: order_id"
+        if fixed:
+            msg += ". Pass the order ID: BK- followed by 5 digits, e.g. BK-10571."
+        return None, _err(msg)
     # Flaw (b): only the "BK-" prefixed form is accepted. A bare number is rejected.
     if not _ORDER_ID_RE.match(order_id):
-        return None, _err(f'Invalid order_id: "{order_id}"')
+        msg = f'Invalid order_id: "{order_id}"'
+        if fixed:
+            msg += ". Order IDs are BK- followed by 5 digits, e.g. BK-10571."
+        return None, _err(msg)
     order = ORDERS.get(order_id)
     if order is None:
-        return None, _err(f"Order not found: {order_id}")
+        msg = f"Order not found: {order_id}"
+        if fixed:
+            msg += ". Check the order ID with the customer and try again."
+        return None, _err(msg)
     return order, None
 
 
-def search_books(args):
+def search_books(args, fixed=False):
     query = args.get("query")
     if not isinstance(query, str) or not query.strip():
-        return _err("Missing required argument: query")
+        msg = "Missing required argument: query"
+        if fixed:
+            msg += ". Pass a title, author name or ISBN."
+        return _err(msg)
     q = query.strip().lower()
     hits = [b for b in BOOKS if q in b["title"].lower() or q in b["author"].lower() or q == b["isbn"]]
     return {"query": query, "results": hits[:5], "count": len(hits[:5])}, False
 
 
-def get_order_status(args):
-    order, err = _find_order(args)
+def get_order_status(args, fixed=False):
+    order, err = _find_order(args, fixed)
     if err:
         return err
     return dict(order), False
 
 
-def cancel_order(args):
-    order, err = _find_order(args)
+# fixed variant: what the customer or agent can do next, by order status
+_CANCEL_NEXT = {
+    "shipped": "Order {id} has shipped, so it can't be cancelled. A return can be started once it has been delivered.",
+    "delivered": "Order {id} has been delivered, so it can't be cancelled. It can be returned instead with start_return.",
+    "cancelled": "Order {id} is already cancelled. No further action is needed.",
+}
+_RETURN_NEXT = {
+    "processing": "Order {id} has not shipped, so it can't be returned. It can be cancelled instead with cancel_order.",
+    "shipped": "Order {id} has shipped but has not been delivered, so it can't be returned yet. A return can be started once it has been delivered.",
+    "cancelled": "Order {id} was cancelled, so it can't be returned. No further action is needed.",
+}
+
+
+def cancel_order(args, fixed=False):
+    order, err = _find_order(args, fixed)
     if err:
         return err
     if order["status"] != "processing":
+        if fixed and order["status"] in _CANCEL_NEXT:
+            return _err(_CANCEL_NEXT[order["status"]].format(id=order["order_id"]))
         return _err(f"Order {order['order_id']} cannot be cancelled because its status is {order['status']}.")
     order["status"] = "cancelled"
     return {"order_id": order["order_id"], "status": "cancelled", "refund": "Full refund issued to the original payment method."}, False
 
 
-def start_return(args):
-    order, err = _find_order(args)
+def start_return(args, fixed=False):
+    order, err = _find_order(args, fixed)
     if err:
         return err
     if order["status"] != "delivered":
+        if fixed and order["status"] in _RETURN_NEXT:
+            return _err(_RETURN_NEXT[order["status"]].format(id=order["order_id"]))
         return _err(f"Order {order['order_id']} is not eligible for return because its status is {order['status']}.")
     return {
         "order_id": order["order_id"], "return_id": "RT-" + order["order_id"][3:],
@@ -200,7 +280,7 @@ def start_return(args):
     }, False
 
 
-def get_store_policy(args):
+def get_store_policy(args, fixed=False):
     topic = args.get("topic")
     if topic not in POLICIES:
         return _err(f"Unknown policy topic: {topic!r}. Valid topics: {', '.join(POLICIES)}")
@@ -216,14 +296,24 @@ _IMPLS = {
 }
 
 
-def execute(name, args):
-    """Run a tool. Returns (result_dict, is_error). Errors are {"error": "..."} with is_error True."""
+def execute(name, args, variant=None):
+    """Run a tool. Returns (result_dict, is_error). Errors are {"error": "..."} with is_error True.
+
+    variant is one of VARIANTS; None means AGENT_VARIANT from the environment, default flawed.
+    """
+    fixed = _VARIANT_FIXES[resolve_variant(variant)][1]  # the "fixed" flag in the impls means fix 2
     impl = _IMPLS.get(name)
     if impl is None:
-        return {"error": f"Unknown tool: {name}"}, True
+        msg = f"Unknown tool: {name}"
+        if fixed:
+            msg += f". Available tools: {', '.join(_IMPLS)}."
+        return {"error": msg}, True
     if not isinstance(args, dict):
-        return {"error": "Tool arguments must be an object"}, True
-    return impl(args)
+        msg = "Tool arguments must be an object"
+        if fixed:
+            msg += ', for example {"query": "Dune"}.'
+        return {"error": msg}, True
+    return impl(args, fixed)
 
 
 def reset_state():
@@ -236,9 +326,11 @@ _INITIAL_STATUS = {oid: o["status"] for oid, o in ORDERS.items()}
 
 
 if __name__ == "__main__":
-    if "--dump-tools" in sys.argv[1:]:
-        json.dump(TOOLS, sys.stdout, indent=2)
+    argv = sys.argv[1:]
+    if "--dump-tools" in argv:
+        variant = argv[argv.index("--variant") + 1] if "--variant" in argv[:-1] else "flawed"
+        json.dump(tools_for(variant), sys.stdout, indent=2)
         sys.stdout.write("\n")
     else:
-        sys.stderr.write("usage: python demo-agent/tools.py --dump-tools > examples/promptfoo/tools.json\n")
+        sys.stderr.write("usage: python demo-agent/tools.py --dump-tools [--variant flawed|fixed|desc_only|errors_only] > tools.json\n")
         sys.exit(2)
